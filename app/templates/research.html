@@ -174,6 +174,25 @@
       </tbody></table>
   </div>
   <p class="mt-2 text-sm">{{ ml_note }}</p>
+  {% if ml.calibration %}
+  <h3 class="mb-1 mt-4 font-bold">Are the model's percentages honest? (calibration, out of sample)</h3>
+  <p class="mb-2 text-sm text-slate-800">Every evaluation scored by a model that never saw it, grouped into score bands (band edges fixed on the walk-forward period, reused unchanged on the hold-out).
+    A useful model shows "actually won" rising from the lowest band to the highest. These are the numbers behind the <em>Model view</em> on each stock page.</p>
+  <div class="grid gap-4 lg:grid-cols-2">
+    {% for label, cal in [('Walk-forward test', ml.calibration.selection), ('Hold-out (newest data)', ml.calibration.holdout)] %}
+    <div class="overflow-x-auto rounded border border-slate-300 bg-white">
+      <table class="w-full text-left text-sm"><caption class="p-2 text-left font-semibold">{{ label }}{% if cal.period %}: {{ cal.period[0] }} to {{ cal.period[1] }}, AUC {{ cal.auc | num(3) }} (0.5 = coin flip){% endif %}</caption>
+        <thead class="bg-slate-100"><tr><th scope="col" class="p-2">Score band</th><th scope="col" class="p-2">Avg score</th><th scope="col" class="p-2">Actually won</th><th scope="col" class="p-2">Avg net return</th><th scope="col" class="p-2">Trades</th></tr></thead>
+        <tbody>{% for b in cal.bins %}
+          <tr class="border-t border-slate-200"><th scope="row" class="p-2 font-medium">{{ b.lo | pct(false, 0) }} to {{ b.hi | pct(false, 0) }}</th>
+            <td class="p-2">{{ b.mean_p | pct(false, 0) }}</td><td class="p-2 font-semibold">{{ b.win_rate | pct(false, 0) }}</td>
+            <td class="p-2">{{ b.avg_return | pct(true, 2) }}</td><td class="p-2">{{ b.n }}</td></tr>{% else %}
+          <tr><td colspan="5" class="p-2 text-slate-700">no out-of-sample rows</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% endif %}
 </section>
 

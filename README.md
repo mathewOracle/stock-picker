@@ -105,6 +105,12 @@ No Buy is final until the evidence backs it. `Run research` on the Research page
    inside each training window (same sign across 3 time slices, top 8). Chosen on the selection period,
    then judged once on an untouched hold-out and again on stocks it never trained on. Adopted only if the
    filtered trades show a significant edge in both (`verdict()`).
+   Adopted or not, each stock page shows a **Model view** (`model_view.py`): the score, how trades with
+   similar scores actually did out of sample (calibration bands stored by `meta.calibration()`, shown on
+   /research), and which signals pushed it up or down. Information only; it never changes a verdict.
+   Finding so far: the score ranks *win rate* honestly (hold-out AUC 0.63) but higher win rate comes with
+   smaller payoffs, so it does not raise returns. Probes in `scripts/` (`regime_probe`, `deep_sequence_probe`,
+   `target_probe`) tested regime gates, a sequence CNN and an edge-shaped target; none cleared the bar.
 
 `verdict.py` combines these: a rule-based Buy that fails validation is shown as **Watchlist** (with the
 failed checks listed as "waiting for"), and appears under "Rule-based candidates (not validated)".
