@@ -109,3 +109,37 @@ period has a standard deviation of about 3.1 %. With 52 periods, the smallest ne
   benchmark (of U2 itself).
 * **Meaning:** a family passing D, V and C on U2 is evidence that the ranking works in the broader market, which
   would argue for widening the app's universe. Failing strengthens "no simple swing edge" for this data.
+
+# Results of Addendum A (run once, 2026-10-23, commit fa2baaa)
+
+U2 = 158 of 162 candidates usable (LTIM, GUJGASLTD, HONAUR not returned by Yahoo; one name too young).
+Data note: PNB, SKFINDIA and YESBANK each have a daily move above 40 % (Yes Bank's 2020 collapse is real; the
+others may be adjustment errors). No bad-print filter was pre-registered for swing, so none was added.
+
+| Family (U2) | D net excess, t, years + | V net excess, t, years + | Result |
+|---|---|---|---|
+| M1 12-1 momentum | +0.96 %, 2.43, 100 %: PASS | +0.46 %, 1.32, 67 % (2x cost +0.40 %) | **fail (V t < 1.65)** |
+| M2 6-1 momentum | +0.93 %, 2.57, 100 %: PASS | +0.44 %, 1.31, 67 % (2x cost +0.34 %) | **fail (V t < 1.65)** |
+| M6 risk-adjusted momentum | +0.85 %, 2.25, 100 %: PASS | +0.27 %, 0.96, 100 % (2x cost +0.15 %) | **fail (V t < 1.65)** |
+| M3 52-week-high | +0.22 %, 0.46: fail | closed | |
+| M4 low volatility | -0.43 %, -1.14: fail | closed | |
+| M5 one-month reversal | +0.29 %, 0.73: fail | closed | |
+
+**C (2024-11 onward) stays closed for these families**, as pre-registered. Opening it after a near miss would
+move the goalposts.
+
+## Interpretation (after the run; not a new test)
+
+* Momentum is the **only** lead in all the research so far: positive in both periods on the wider universe,
+  surviving double costs, consistent with the literature (stronger outside mega-caps). It is **not validated**.
+* **Survivorship bias hits momentum hardest:** a list of today's mid-caps includes past winners that kept
+  winning and excludes momentum names that later collapsed out of the market. The bias is largest in early
+  years, which fits D (+0.96 %) shrinking in V (+0.46 %). The true edge may be much smaller.
+* In the app's 63 mega-caps, momentum showed nothing (main plan). The live swing rule's entries show no skill.
+
+## What would settle it
+
+1. **Point-in-time membership** (historical Nifty 200/500 constituents, including stocks that later fell out),
+   so the test universe is what an investor could actually have bought on each date.
+2. **A forward test from today**: rank U2 every 20 sessions, record the picks before outcomes exist, evaluate
+   after 12-18 months with the same pass rule as V. Nothing seen so far can contaminate it.
