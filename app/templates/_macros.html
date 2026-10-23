@@ -57,6 +57,13 @@
 <span class="text-xs {{ styles.get(block.status, 'text-slate-600') }}">{{ block | evidence_note }}</span>
 {%- endmacro %}
 
+{# Cost arithmetic of one plan (app/intraday/economics.py): the break-even bar next to the backtest's record #}
+{% macro trade_math_line(m) -%}
+{% if m %}<span class="text-xs text-slate-800">Break-even needs <strong>{{ m.break_even | pct(false, 0) }}</strong> winners (costs {{ '%.2f' | format(m.cost_r) }}R).
+  {% if m.won is not none %}Backtest won <strong>{{ m.won | pct(false, 0) }}</strong>:
+  <span class="font-semibold {{ 'text-green-800' if m.clears else 'text-red-800' }}">{{ 'clears the bar' if m.clears else 'below the bar' }}</span>.{% else %}No backtest record to compare.{% endif %}</span>{% endif %}
+{%- endmacro %}
+
 {# Signal table shared by every analysis section (swing pillars and intraday) #}
 {% macro signal_table(signals, caption) -%}
 <div class="overflow-x-auto">

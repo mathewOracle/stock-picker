@@ -64,3 +64,41 @@ Only a family that passes D, V and C may become a live suggestion. If none does,
 * Existing 5-minute setups re-simulated with a minimum stop of 0.8 % of price (cost <= 0.15 R) and
   square-off exits: does fixing the geometry alone rescue any setup? 60 sessions only, so it is reported,
   not adopted.
+
+---
+
+# Results (run once, 2026-10-23, `scripts/intraday_open_close_probe.py`, committed before the run)
+
+| Family | D (2016-22) net, t | V (2023-26) net, t | C (last 60 sessions, real 5-min fills) |
+|---|---|---|---|
+| F1 relative-gap reversal | +0.115 %, t 8.9: PASS | +0.044 %, t 3.4: PASS | 09:15 fill -0.170 %, t -4.9: **FAIL** |
+| F1 / high-vol | +0.133 %, t 7.1: PASS | +0.046 %, t 2.4: PASS | -0.224 %, t -3.9: **FAIL** |
+| F2 large-gap fade | +0.193 %, t 4.8: PASS | +0.083 %, t 1.6: fail | closed |
+| F2 / high-vol | +0.194 %, t 3.9: PASS | +0.123 %, t 1.9: PASS | -0.352 %, t -2.5: **FAIL** |
+| F3 large-gap go | -0.433 %: fail | closed | closed |
+| F4 one-day reversal | -0.105 %: fail | closed | closed |
+
+**Outcome: no family passed all three gates, so none becomes a live suggestion.**
+
+## What the numbers say (written after the run; interpretation, not a new test)
+
+1. **A real anomaly, shrinking.** F1's gross return per position: ~0.25 % (2016-2020), ~0.20 % (2021-22),
+   ~0.17 % (2023-25), **0.09 % (2026)**. Net of the 0.12 % round trip, 2026 is negative. Same shape for
+   F2/high-vol (2026 gross -0.04 %).
+2. **The daily-bar test was optimistic about fills.** The signal (gap) is only known once the opening price
+   exists, so entering "at the open" is not exactly achievable. On the same 60 sessions, daily-bar returns
+   give gross +0.023 % and the 09:15 5-minute fill gives -0.050 %. The official open and the 09:15 bar's open
+   differ by a median 0.15 % (p90 0.6 %). My plan called the daily open "reachable with a pre-open order";
+   that was too generous, and the confirmation gate is what caught it.
+3. **Costs are the whole story for the existing 5-minute setups.** `scripts/intraday_geometry_probe.py`
+   (descriptive): widening stops to >= 0.8 % cuts costs to 0.15 R but gross stays ~0 (-0.004 % per trade over
+   4,825 trades; 59 sessions). The entries themselves carry no edge, so geometry alone does not rescue them.
+4. **What would change the conclusion:** forward (paper) evidence on F1/F2 using real pre-open indicative
+   prices, which the free data source does not provide; or a much larger 5-minute history.
+
+## Live-logic decision
+
+* Keep the rule: an intraday suggestion ("Long/Short setup") requires a **supported** backtest record; today
+  none is, so the scanner shows **candidates**, never trade calls.
+* Added `app/intraday/economics.py`: every plan now shows the win rate it needs to break even after costs
+  next to the playbook's actual backtest win rate (pure arithmetic, nothing fitted).

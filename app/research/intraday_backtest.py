@@ -22,6 +22,7 @@ import pandas as pd
 from app import data
 from app.intraday import archive
 from app.intraday.analysis import MIN_RR as LIVE_MIN_RR
+from app.intraday.economics import COST_PER_SIDE   # one cost assumption for live plans and the backtest
 from app.intraday.indicators import with_intraday_indicators
 from app.intraday.setups import PLAYBOOKS, detect_setups
 from app.intraday.snapshot import assemble
@@ -32,7 +33,6 @@ FIRST_DECISION_START = clock(9, 25)    # the bar that CLOSES at 09:30, when the 
 LAST_DECISION_START = clock(14, 40)    # closes 14:45: the live no-new-entries cutoff
 SQUARE_OFF_START = clock(15, 10)       # last bar used; closes 15:15
 DECISION_EVERY_MIN = 15
-COST_PER_SIDE = 0.0006       # brokerage + STT + slippage, intraday
 MIN_RR = LIVE_MIN_RR         # the same reward/risk bar as the live verdict (imported, never copied)
 LEDGER_PATH = data.DB_PATH.parent / "research" / "intraday_trades.csv.gz"
 WORKERS = max(1, min(10, (os.cpu_count() or 2) - 2))
@@ -88,8 +88,13 @@ def session_complete(day: pd.DataFrame) -> bool:
     return bool(len(day)) and day.index[-1].time() >= SQUARE_OFF_START
 
 
-def replay_symbol(symbol: str, raw: pd.DataFrame, only_after: str | None = None) -> dict:
-    """Trades for one stock over its complete sessions after `only_after`, plus the last session it covered."""
+def replay_symbol(symbol: str, raw: pd.DataFrame, only_after: str | None = None, levels=None) -> dict:
+    """Trades for one stock over its complete sessions after `only_after`, plus the last session it covered.
+
+    `levels(setup) -> (stop, target)` lets research probes re-run the SAME entries with other exits; default =
+    the setup's own stop and first target.
+    """
+    levels = levels or (lambda setup: (setup.plan.stop, setup.plan.target1))
     dates = sorted(set(raw.index.date))
     trades, through = [], only_after
     for k in range(1, len(dates)):
@@ -114,7 +119,7 @@ def replay_symbol(symbol: str, raw: pd.DataFrame, only_after: str | None = None)
                 if key in seen or setup.plan.reward_risk < MIN_RR:
                     continue
                 seen.add(key)
-                result = simulate(window[today_mask], rel, setup.side, setup.plan.stop, setup.plan.target1)
+                result = simulate(window[today_mask], rel, setup.side, *levels(setup))
                 if result:
                     trades.append({"symbol": symbol, "date": today.isoformat(),
                                    "decision": window.index[pos + 1].strftime("%H:%M"),

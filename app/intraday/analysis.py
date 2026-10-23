@@ -11,6 +11,8 @@ import pandas as pd
 from app import analysis as swing
 from app import data
 from app.intraday.checks import DailyContext, intraday_context, intraday_technical, tradeability_issues
+from app.intraday.economics import describe as describe_math
+from app.intraday.economics import trade_math
 from app.intraday.indicators import NO_NEW_ENTRIES, OPENING_RANGE_END, SESSION_CLOSE, SESSION_OPEN
 from app.intraday.setups import COUNTER_TREND, Setup, detect_setups
 from app.intraday.snapshot import Snapshot, build_snapshot
@@ -51,6 +53,7 @@ class IntradayReport:
     reason: str = ""
     best: Setup | None = None
     evidence: dict[str, dict] = field(default_factory=dict)     # "playbook:side" -> backtest record
+    economics: dict[str, dict] = field(default_factory=dict)    # "playbook:side" -> cost in R, break-even win rate
     sentiment: dict | None = None                                # daily news sentiment (swing-horizon, informational)
     ml_prob: float | None = None                                 # swing ML model's P(trade wins), only if adopted
 
@@ -156,7 +159,8 @@ def decide(report: IntradayReport, status: MarketStatus, evidence: dict | None =
     block = setup_evidence(evidence, best)
     if block["status"] == "supported":
         return f"{best.side} setup", best.trigger, best
-    return f"{best.side} candidate", f"{best.trigger}. Not validated: {describe_evidence(block)}", best
+    return (f"{best.side} candidate",
+            f"{best.trigger}. Not validated: {describe_evidence(block)}; {describe_math(trade_math(best.plan, block))}", best)
 
 
 def _build(now: datetime) -> IntradayScan:
@@ -188,6 +192,8 @@ def _build(now: datetime) -> IntradayScan:
         report.scores = {"technical": score(report.technical), "context": score(report.context)}
         report.scores["bias"] = sum(report.scores[k] * w for k, w in BIAS_WEIGHTS.items())
         report.evidence = {f"{s.playbook.key}:{s.side}": setup_evidence(backtest, s) for s in report.setups}
+        report.economics = {key: trade_math(s.plan, report.evidence[key])
+                            for s in report.setups if (key := f"{s.playbook.key}:{s.side}")}
         report.sentiment = news.get(symbol)         # same daily headline score the swing page already computed
         report.ml_prob = sw.metrics.get("ml_prob")  # only set when the swing ML filter is adopted (it isn't, today)
         report.verdict, report.reason, report.best = decide(report, scan.status, backtest)
