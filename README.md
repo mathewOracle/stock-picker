@@ -82,7 +82,7 @@ compute new dates, settle still-open trades, and re-fetch the current month. If 
 stock's prices, only that stock is replayed. `python -m scripts.verify_ledger` proves the ledger still
 reproduces the archived baseline (`data/research/archive/baseline-2026-10-19/`, with SHA-256 sums).
 
-CLI steps: `python -m app.research backtest | news | news_history | study | model | all`.
+CLI steps: `python -m app.research backtest | news | news_history | study | intraday | forward | model | all`.
 
 No Buy is final until the evidence backs it. `Run research` on the Research page (or
 `python -m app.research all`) does three things, in order:
@@ -129,17 +129,32 @@ failed checks listed as "waiting for"), and appears under "Rule-based candidates
 
 So nothing is currently validated as a Buy. That is the system working, not failing.
 
+**Later research (23 Oct 2026, pre-registered in `docs/`):** the intraday setups have ~0 gross edge
+(`docs/INTRADAY_RESEARCH_PLAN.md`). On swing, the live rule's entries show no skill even without
+stops, and six published price rankings all failed on the app's 63 stocks. Momentum was the one lead:
+it passed 2017-21 on 158 *other* NSE stocks, then fell short in 2022-24 (`docs/SWING_RESEARCH_PLAN.md`).
+
+### Forward test (`forward.py`, Addendum B)
+
+The clean way to settle momentum: every 20 sessions, after 16:00 IST, the M1/M2/M6 picks on those 158
+stocks are ranked from the latest completed close and **appended** to `docs/forward/momentum_picks.csv`
+(git-tracked, never edited). Entry is the first open after recording, so no outcome can leak in. The verdict
+is computed once, at 15 completed periods (~Jan 2028). Until then /research shows the current picks and
+interim numbers labelled as such. **Commit the picks file after each new rebalance**: the git timestamp is
+the proof. First rebalance: 23 Oct 2026, 157 stocks. Shared ranking maths: `factors.py`; universe: `u2.py`.
+
 `python -m scripts.backtest_sanity` checks the engine can detect a planted edge (an oracle) and prints
 per-feature information coefficients.
 
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # 156 tests, no network needed (~1 min; ML tests are slowest)
+.venv/bin/python -m pytest          # 213 tests, no network needed (~1.5 min; ML tests are slowest)
 node tests/js/position-size.test.js
 ```
 
 ## Known limits
 
-Not backtested. Large caps only. No news/earnings-date awareness. Yahoo data can lag or be wrong
+Fundamentals are not backtested (only today's snapshot is stored). Large caps only in the live app.
+Backtests use today's names (survivorship bias); only the forward test is free of it. No news/earnings-date awareness. Yahoo data can lag or be wrong
 (e.g. corporate actions such as the Tata Motors demerger).
