@@ -126,6 +126,7 @@ def research_page(request: Request):
                     key=lambda item: item[1]["score"])
     ctx = {"nav": "research", "bt": data.load_result("backtest"), "news": news, "ml": data.load_result("model"),
            "study": data.load_result("sentiment_study"), "ib": data.load_result("intraday_backtest"),
+           "fw": data.load_result("forward"),
            "ml_note": analysis.build().ml_note, "names": STOCKS, "proba_gate": PROBA_GATE,
            "news_low": scored[:5], "news_high": scored[::-1][:5]}
     return templates.TemplateResponse(request, "research.html", ctx)

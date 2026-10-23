@@ -230,6 +230,52 @@
   {% endif %}
 </section>
 
+{# ---------------- forward test ---------------- #}
+<section aria-labelledby="fw-h" class="mb-6">
+  <h2 id="fw-h" class="mb-2 text-lg font-bold">5. Forward test: momentum on 158 other NSE stocks</h2>
+  <p class="mb-2 text-sm text-slate-800">Momentum was the only lead in all of this research (it passed 2017-21 on stocks outside this app's list, then fell short in 2022-24), and those backtests are flattered by survivorship bias. So it is being tested the only clean way: <strong>picks are recorded before the future exists</strong>, in an append-only file kept in git (<span class="font-mono">docs/forward/momentum_picks.csv</span>), then scored once they play out.
+    Every 20 sessions the top fifth by each ranking is bought at the next open and compared with holding all of them equally, after 0.15% per side on new entries. The verdict is computed <strong>once</strong>, at {{ fw.verdict_periods if fw else 15 }} completed periods (about 15 months), with the same pass rule as before. Rules: Addendum B of <span class="font-mono">docs/SWING_RESEARCH_PLAN.md</span>.</p>
+  {% if not fw %}
+  <p class="rounded border border-slate-300 bg-white p-4">Not run yet. Press <strong>Run research</strong> (or <span class="font-mono">python -m app.research forward</span>) after 16:00 IST on a trading day to record the first picks.</p>
+  {% else %}
+  <p class="mb-2 rounded border border-slate-300 bg-white p-3 text-sm" role="status"><strong>Last run:</strong> {{ fw.note }}{% if fw.missing %} Not returned by Yahoo: {{ fw.missing | length }} stocks.{% endif %}</p>
+  {% if fw.current %}
+  {% set c = fw.current %}
+  <div class="mb-3 overflow-x-auto rounded border border-slate-300 bg-white">
+    <table class="w-full text-left text-sm"><caption class="p-2 text-left font-semibold">Current picks (ranked on {{ c.signal }}, {{ c.eligible }} eligible stocks): hold from the open of {{ c.entry or 'the next session' }} to the close of {{ c.exit or '20 sessions later' }}. Not validated; information only.</caption>
+      <thead class="bg-slate-100"><tr><th scope="col" class="p-2">Ranking</th><th scope="col" class="p-2">Top fifth</th></tr></thead>
+      <tbody>
+      {% for fam in fw.families %}
+        <tr class="border-t border-slate-200"><th scope="row" class="p-2 font-medium">{{ fam.name }}</th><td class="p-2">{{ c.picks[fam.key] | join(', ') }}</td></tr>
+      {% endfor %}
+      </tbody></table>
+  </div>
+  {% endif %}
+  <div class="overflow-x-auto rounded border border-slate-300 bg-white">
+    <table class="w-full text-left text-sm"><caption class="sr-only">Forward-test score of each momentum ranking so far</caption>
+      <thead class="bg-slate-100"><tr>
+        <th scope="col" class="p-2">Ranking</th><th scope="col" class="p-2">Completed periods</th>
+        <th scope="col" class="p-2">Picks avg</th><th scope="col" class="p-2">All stocks avg</th><th scope="col" class="p-2">Net excess</th>
+        <th scope="col" class="p-2"><abbr title="Edge divided by its standard error, over non-overlapping periods">t-stat</abbr></th><th scope="col" class="p-2">Status</th>
+      </tr></thead>
+      <tbody>
+      {% for fam in fw.families %}
+        <tr class="border-t border-slate-200">
+          <th scope="row" class="p-2 font-medium">{{ fam.name }}</th>
+          <td class="p-2">{{ fam.periods }} of {{ fw.verdict_periods }}</td>
+          {% if fam.net is defined %}
+          <td class="p-2">{{ fam.top | pct(true, 2) }}</td><td class="p-2">{{ fam.universe | pct(true, 2) }}</td>
+          <td class="p-2">{{ fam.net | pct(true, 2) }}</td><td class="p-2">{{ fam.t | num(2) }}</td>
+          {% else %}<td class="p-2 text-slate-700" colspan="4">needs 3+ completed periods</td>{% endif %}
+          <td class="p-2 font-semibold {{ {'PASS': 'text-green-800', 'fail': 'text-red-800'}.get(fam.status, 'text-amber-800') }}">{{ 'interim, no conclusion' if fam.status == 'interim' else fam.status }}</td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+  </div>
+  <p class="mt-2 text-xs text-slate-700">{{ fw.rebalances | length }} rebalances recorded, {{ fw.rebalances | selectattr('complete') | list | length }} completed. Interim numbers are never a reason to stop early or change the rules. Commit the picks file after each new rebalance: the git history is the proof of when it was written.</p>
+  {% endif %}
+</section>
+
 <section aria-labelledby="read-h" class="rounded border border-slate-300 bg-white p-4 text-sm">
   <h2 id="read-h" class="font-bold">How to read this honestly</h2>
   <ul class="mt-2 list-disc pl-5">

@@ -61,6 +61,8 @@ def portfolio(panel: pd.DataFrame, family: str, overlay: bool = False, cost_mult
         if len(group) < MIN_NAMES:
             continue
         picks = pick(group, family)
+        if picks.empty:            # forward test only: every recorded pick lost its prices
+            continue
         names = set(picks["symbol"])
         entered = len(names - previous) / len(names)
         previous = names

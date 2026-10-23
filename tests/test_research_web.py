@@ -10,6 +10,40 @@ from app.research import pipeline
 client = TestClient(main.app)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_forward_test(monkeypatch):
+    """The real forward step hits Yahoo and APPENDS to the git-tracked picks record: never from a test."""
+    monkeypatch.setattr(pipeline.forward, "run", lambda progress: {"note": "Current holding period still running."})
+
+
+FORWARD = {"verdict_periods": 15, "note": "Recorded a new rebalance on 2026-10-23 (150 eligible stocks).",
+           "missing": [], "rebalances": [{"complete": False}],
+           "current": {"signal": "2026-10-23", "entry": "2026-10-26", "exit": None, "eligible": 150,
+                       "picks": {"M1": ["DIXON", "BEML"], "M2": ["KEI"], "M6": ["HAVELLS"]}},
+           "families": [{"key": k, "name": n, "periods": 0, "status": "interim"}
+                        for k, n in (("M1", "M1 12-1 momentum"), ("M2", "M2 6-1 momentum"), ("M6", "M6 risk-adjusted momentum"))]}
+
+
+def test_research_page_shows_forward_picks_as_interim(monkeypatch):
+    monkeypatch.setattr(analysis, "_memo", None)
+    monkeypatch.setattr(data, "load_result", lambda key: FORWARD if key == "forward" else None)
+    page = client.get("/research").text
+    assert "Forward test: momentum" in page and "DIXON, BEML" in page and "open of 2026-10-26" in page
+    assert page.count("interim, no conclusion") == 3 and "0 of 15" in page
+    assert "PASS" not in page                                    # nothing is claimed before the one look
+
+
+def test_forward_step_failure_is_reported_alone(monkeypatch):
+    _stub_history(monkeypatch)
+    _stub_intraday(monkeypatch)
+    monkeypatch.setattr(pipeline, "run_backtest", lambda progress: {"universe": {"buy": {"n": 1, "t_stat": 0.1}}, "passed": False})
+    monkeypatch.setattr(pipeline, "run_news", lambda progress: {"stocks": {}, "model": "loughran-mcdonald"})
+    monkeypatch.setattr(pipeline, "run_model", lambda progress: {"best": "logistic", "adopted": False})
+    monkeypatch.setattr(pipeline.forward, "run", lambda progress: (_ for _ in ()).throw(RuntimeError("no U2 data")))
+    result = pipeline.run_all()
+    assert result.errors == ["forward test failed (no U2 data)"] and "Model" in result.message
+
+
 def test_research_page_has_honest_empty_states(monkeypatch):
     monkeypatch.setattr(analysis, "_memo", None)   # restored on teardown: no leaking research-free analysis
     monkeypatch.setattr(data, "load_result", lambda key: None)
@@ -110,6 +144,7 @@ def test_run_all_raises_only_when_everything_fails(monkeypatch):
 
     for step in ("run_backtest", "run_news"):
         monkeypatch.setattr(pipeline, step, boom)
+    monkeypatch.setattr(pipeline.forward, "run", boom)
     with pytest.raises(pipeline.ResearchError, match="backtest failed"):
         pipeline.run_all()
 

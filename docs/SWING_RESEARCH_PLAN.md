@@ -160,7 +160,9 @@ picks **before** the future exists, then wait. Item 2 of "What would settle it" 
   and the commit history is the proof of when each was written.
 * **Signal:** the latest **completed** session (after 16:00 IST), from data refreshed in the same run. A
   rebalance is refused (not recorded with a smaller universe) if fewer than 90 % of the U2 stocks with enough
-  history have a bar that day, or if the latest session is more than 5 calendar days old.
+  history have a bar that day, or if the latest session is more than 5 calendar days old. (Clarified before the
+  first pick: "stocks with enough history" means >= 252 traded sessions and at least one bar in the last 20
+  sessions, so a stock that delists later cannot block every future rebalance.)
 * **Holding:** entry at the open of the first session that starts **after the picks were recorded**, exit at
   the close 20 sessions later (entry day included). The next rebalance is due once that exit session has closed,
   so holding periods never overlap. A missed evening just shifts the next rebalance later; a rebalance is never

@@ -13,7 +13,7 @@ from pathlib import Path
 import pandas as pd
 
 from app import data
-from app.research import intraday_backtest, ledger, news, news_history, sentiment, sentiment_study
+from app.research import forward, intraday_backtest, ledger, news, news_history, sentiment, sentiment_study
 from app.research.backtest import eval_dates, replay_stock
 from app.research.evidence import summarize
 from app.research.news import normalize
@@ -155,6 +155,10 @@ def run_all(progress: data.Progress = data._no_progress) -> ResearchResult:
                      f"{supported} of {len(intraday_result['setups'])} setups supported.")
     except Exception as exc:
         errors.append(f"intraday backtest failed ({exc})")
+    try:   # append-only: records a rebalance only when one is due, otherwise just re-scores what is recorded
+        parts.append(f"Forward test: {forward.run(progress)['note']}")
+    except Exception as exc:
+        errors.append(f"forward test failed ({exc})")
     if backtest is not None:  # the model trains on the dataset the backtest just wrote
         try:
             report = run_model(progress)
