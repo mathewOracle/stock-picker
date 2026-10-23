@@ -322,26 +322,32 @@ def ensure_history(progress: Progress = _no_progress) -> int:
     if not stale:
         return 0
     progress(0, 1, f"updating price history for {len(stale)} symbols")
-    stored = {s: load_history(s) for s in stale}
-    cutoff = pd.Timestamp.now().normalize() - pd.Timedelta(days=TOP_UP_MAX_GAP_DAYS)
-    recent = [s for s in stale if stored[s] is not None and len(stored[s]) >= OVERLAP_MIN * 5
-              and stored[s].index[-1] >= cutoff]
-    session = _fresh_session()
-    merged: dict[str, pd.DataFrame] = {}
-    if recent:
-        for symbol, frame in _download(recent, session, period=TOP_UP_PERIOD).items():
-            if (result := merge_history(stored[symbol], frame, partial=True)) is not None:
-                merged[symbol] = result
-    redo = [s for s in stale if s not in merged]   # first run, long gap, restated by Yahoo, or failed
-    if redo:
-        for symbol, frame in _download(redo, session, period=HISTORY_PERIOD).items():
-            merged[symbol] = merge_history(stored[symbol], frame, partial=False)
+    merged = top_up({s: load_history(s) for s in stale}, _fresh_session())
     if not merged:
         raise RefreshError("Could not download price history from Yahoo Finance. Check VPN/proxy.")
     with _connect() as conn:
         for symbol, frame in merged.items():
             _save(conn, f"history:{symbol}", _serialize(frame, DAILY_FMT))
     return len(merged)
+
+
+def top_up(stored: dict[str, pd.DataFrame | None], session: curl_requests.Session) -> dict[str, pd.DataFrame]:
+    """Bring each stored series current: a short overlapping download merged on, else a full one.
+
+    Returns only the series that were updated; a symbol Yahoo did not return keeps its stored history.
+    """
+    cutoff = pd.Timestamp.now().normalize() - pd.Timedelta(days=TOP_UP_MAX_GAP_DAYS)
+    recent = [s for s, h in stored.items() if h is not None and len(h) >= OVERLAP_MIN * 5 and h.index[-1] >= cutoff]
+    merged: dict[str, pd.DataFrame] = {}
+    if recent:
+        for symbol, frame in _download(recent, session, period=TOP_UP_PERIOD).items():
+            if (result := merge_history(stored[symbol], frame, partial=True)) is not None:
+                merged[symbol] = result
+    redo = [s for s in stored if s not in merged]   # first run, long gap, restated by Yahoo, or failed
+    if redo:
+        for symbol, frame in _download(redo, session, period=HISTORY_PERIOD).items():
+            merged[symbol] = merge_history(stored[symbol], frame, partial=False)
+    return merged
 
 
 def load_history(symbol: str) -> pd.DataFrame | None:
