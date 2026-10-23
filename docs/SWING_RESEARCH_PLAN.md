@@ -76,3 +76,36 @@ No other variants (no other lookbacks, quantiles or holding periods) are run.
   first), with its evidence on /research, until it has also been checked going forward.
 * If none passes, the honest conclusion is: with this universe and data, **no simple swing edge over holding
   the basket is established**, and the Buy list stays labelled unvalidated.
+
+---
+
+# Results of the main plan (run once, 2026-10-23, commit 60dba8e)
+
+D (2017-11 to 2021-12, 52 rebalances): **no family passed**, so V and C stayed closed.
+
+| Family | Top quintile | Universe | Gross excess | Net excess | t | Years + |
+|---|---|---|---|---|---|---|
+| M1 12-1 momentum | +1.58 % | +1.83 % | -0.25 % | -0.32 % | -0.91 | 25 % |
+| M2 6-1 momentum | +1.78 % | +1.83 % | -0.05 % | -0.16 % | -0.35 | 50 % |
+| M3 52-week-high proximity | +1.92 % | +1.83 % | +0.09 % | -0.06 % | -0.13 | 25 % |
+| M4 low volatility | +1.49 % | +1.83 % | -0.33 % | -0.43 % | -0.97 | 25 % |
+| M5 one-month reversal | +2.10 % | +1.83 % | +0.27 % | +0.02 % | 0.05 | 75 % |
+| M6 risk-adjusted momentum | +1.46 % | +1.83 % | -0.37 % | -0.49 % | -1.08 | 25 % |
+
+**Power (descriptive, computed after the run, used to design Addendum A only):** a top-quintile-minus-universe
+period has a standard deviation of about 3.1 %. With 52 periods, the smallest net excess D could detect with
+80 % power was about **1.1 % per period (~14 %/yr)**, larger than published premia. So the result rules out
+*large* edges in these 63 stocks, not small ones. More stocks is the remedy.
+
+# Addendum A: independent-universe replication (pre-registered 2026-10-23, before download or run)
+
+* **Universe U2:** liquid NSE stocks that are **not** in `app.universe.STOCKS`. The candidate list is fixed in
+  `scripts/fetch_extra_universe.py` (committed with this addendum); any name in `STOCKS` is removed in code,
+  and whatever Yahoo returns is used. Names enter a rebalance only once they have the 252-session history.
+* **Bias warning:** U2 is also *today's* names, and mostly mid-caps, so survivorship bias is stronger than in
+  the main plan. A pass here is weaker evidence than the numbers suggest.
+* **Unchanged:** the six families, the D/V/C periods, the pass rules, the 0.15 % per-side cost (V's double-cost
+  check stands in for mid-caps' wider spreads), the top-quintile long-only portfolio and the equal-weight
+  benchmark (of U2 itself).
+* **Meaning:** a family passing D, V and C on U2 is evidence that the ranking works in the broader market, which
+  would argue for widening the app's universe. Failing strengthens "no simple swing edge" for this data.
