@@ -144,7 +144,7 @@ def _retry(fn: Callable, *args):
 def _clean_frame(frame: pd.DataFrame) -> pd.DataFrame:
     frame = frame[OHLCV].dropna(subset=["Open", "High", "Low", "Close"]).copy()
     frame["Volume"] = frame["Volume"].fillna(0)
-    if frame.index.tz is not None:  # keep exchange-local wall-clock time (IST), drop tz
+    if getattr(frame.index, "tz", None) is not None:  # keep IST wall-clock, drop tz (empty replies have no tz)
         frame.index = frame.index.tz_localize(None)
     return frame
 

@@ -56,3 +56,9 @@ def test_intraday_refresh_does_not_bump_daily_timestamp(fake_yahoo):
     assert data.last_refresh() == daily_stamp
     assert data.last_intraday_refresh() is not None
     assert isinstance(data.load_intraday("RELIANCE.NS"), pd.DataFrame)
+
+
+def test_clean_frame_survives_an_empty_yahoo_reply():
+    """Yahoo answers a failed ticker with an empty frame on a plain Index: skip it, don't crash the refresh."""
+    empty = pd.DataFrame(columns=data.OHLCV)
+    assert data._clean_frame(empty).empty
