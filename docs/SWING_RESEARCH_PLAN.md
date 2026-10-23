@@ -143,3 +143,35 @@ move the goalposts.
    so the test universe is what an investor could actually have bought on each date.
 2. **A forward test from today**: rank U2 every 20 sessions, record the picks before outcomes exist, evaluate
    after 12-18 months with the same pass rule as V. Nothing seen so far can contaminate it.
+
+# Addendum B: forward test of momentum on U2 (pre-registered 2026-10-23, before any pick was recorded)
+
+The only way to test momentum without survivorship bias or any chance of having seen the outcome: record the
+picks **before** the future exists, then wait. Item 2 of "What would settle it" above.
+
+* **Families:** M1, M2 and M6 only (the three that passed D on U2). Same features, same top quintile,
+  same >= 30 eligible names. No other variants.
+* **Universe:** U2 exactly as fixed in Addendum A (the candidate list, minus `app.universe.STOCKS`). It is
+  frozen *today*, so stocks that collapse or delist from here on stay in the test: no survivorship bias going
+  forward. A stock is eligible at a rebalance if it has a non-zero-volume bar on the signal day and the full
+  252-session lookback (same rule as the backtest).
+* **Recording (append-only, git-tracked):** `docs/forward/momentum_picks.csv` stores every eligible stock's
+  features and the pick flags per family. Rows are never edited or deleted; only new rebalances are appended,
+  and the commit history is the proof of when each was written.
+* **Signal:** the latest **completed** session (after 16:00 IST), from data refreshed in the same run. A
+  rebalance is refused (not recorded with a smaller universe) if fewer than 90 % of the U2 stocks with enough
+  history have a bar that day, or if the latest session is more than 5 calendar days old.
+* **Holding:** entry at the open of the first session that starts **after the picks were recorded**, exit at
+  the close 20 sessions later (entry day included). The next rebalance is due once that exit session has closed,
+  so holding periods never overlap. A missed evening just shifts the next rebalance later; a rebalance is never
+  back-filled.
+* **Returns:** close(exit) / open(entry) - 1 on adjusted prices. If a stock has no bar on the entry day, it
+  enters at its first open inside the window; if it stops trading (delisting, suspension), it exits at its last
+  close inside the window. A stock with no bar at all inside the window is dropped from both sides and counted.
+* **Scoring:** identical to V: equal-weight top quintile minus equal-weight eligible universe, 0.15 % per side
+  on new entries only, t over non-overlapping periods.
+* **One look:** the verdict is computed **once**, when **15 periods** have completed (about 15 months), with the
+  V rule: net excess > 0, t >= 1.65, >= 60 % of calendar years (>= 4 periods) positive, still > 0 at double cost.
+  Interim numbers are shown, labelled *interim*, and are never a reason to stop early, extend or change anything.
+* **Meaning:** a family that passes is the first validated swing ranking and may be shown beside the verdicts
+  (still information first). If all three fail, momentum joins the list of things that did not work here.
