@@ -3,10 +3,12 @@
 Gates are enforced in code: validation (V) only runs for families that passed discovery (D), confirmation (C)
 only for families that passed V. The regime overlay is descriptive and only printed for C survivors.
 
-Usage: .venv/bin/python -m scripts.swing_factor_probe
+Usage: .venv/bin/python -m scripts.swing_factor_probe            # the app's 63 stocks (main plan)
+       .venv/bin/python -m scripts.swing_factor_probe extra      # Addendum A's independent universe
 """
 
 import math
+import sys
 
 import numpy as np
 import pandas as pd
@@ -43,14 +45,14 @@ def features(close: pd.Series) -> pd.DataFrame:
         "ret_1m": close / close.shift(21) - 1, "rar": mom_6_1 / vol60})
 
 
-def build_periods() -> pd.DataFrame:
+def build_periods(symbols=STOCKS, load=data.load_history) -> pd.DataFrame:
     """One row per (rebalance, stock): the features at the signal close and the realised 20-session return."""
     nifty = data.load_history(BENCHMARK)["Close"]
     calendar = nifty.index
     signal_pos = list(range(WARMUP, len(calendar) - STEP - 1, STEP))
     rows = []
-    for symbol in STOCKS:
-        h = data.load_history(symbol)
+    for symbol in symbols:
+        h = load(symbol)
         if h is None:
             continue
         h = h[h["Volume"] > 0].reindex(calendar)            # same calendar as the benchmark; gaps stay NaN
@@ -123,8 +125,12 @@ def passes(s: dict, min_t: float, need_years: bool = True) -> bool:
     return ok and (not need_years or (s["pos"] >= POSITIVE_SHARE))
 
 
-def main() -> None:
-    panel = build_periods()
+def main(universe: str = "app") -> None:
+    if universe == "extra":
+        from scripts import fetch_extra_universe as extra
+        panel = build_periods(extra.SYMBOLS, extra.load)
+    else:
+        panel = build_periods()
     disc = panel[panel["signal"] <= D_END]
     valid = panel[(panel["signal"] > D_END) & (panel["signal"] <= V_END)]
     conf = panel[panel["signal"] > V_END]
@@ -171,4 +177,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "app")
