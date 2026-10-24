@@ -14,6 +14,7 @@ from app import analysis, data
 from app.intraday import analysis as intraday
 from app.intraday import archive as intraday_archive
 from app.intraday.checks import MIN_ATR_PCT, MIN_TRADED_VALUE_CR
+from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF
 from app.intraday.setups import PLAYBOOKS
 from app.jobs import RefreshJob
 from app.research import pipeline
@@ -58,6 +59,7 @@ def timestamp(value) -> str:
 
 templates.env.filters.update(pct=pct, num=num, pe=pe, crore=crore, timestamp=timestamp,
                               evidence_note=intraday.describe_evidence)
+templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}")
 
 
 # ---------- swing / positional ----------

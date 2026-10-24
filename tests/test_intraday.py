@@ -166,3 +166,29 @@ def test_evidence_never_rescues_a_setup_that_fails_the_live_rules():
     assert decide(_report([poor], bias=80), OPEN, SUPPORTED)[0] == "No trade"
     assert decide(_report([_good()], bias=20), OPEN, SUPPORTED)[0] == "No trade"
     assert decide(_report([_good()], bias=80, issues=["Illiquid"]), OPEN, SUPPORTED)[0] == "No trade"
+
+
+# ---------- entry / exit guidance matches what the backtest trades ----------
+
+def test_backtest_times_derive_from_the_live_cutoffs():
+    from datetime import time as clock
+    from app.research import intraday_backtest as ib
+    assert ib.LAST_DECISION_START == clock(14, 40) and ib.SQUARE_OFF_START == clock(15, 10)   # unchanged by the refactor
+
+
+def _steps(side: str) -> str:
+    from types import SimpleNamespace
+    from app.main import templates
+    plan = SimpleNamespace(entry=100.0, stop=98.0, target1=103.0, target2=105.0)
+    macro = templates.env.get_template("_macros.html").module.entry_exit_steps
+    return str(macro(SimpleNamespace(side=side, plan=plan)))
+
+
+def test_entry_exit_steps_spell_out_a_same_day_round_trip():
+    long, short = _steps("Long"), _steps("Short")
+    assert "buy</span>" not in long and "buy at market" in long and "to sell the whole quantity" in long
+    assert "short-sell at market" in short and "buy back the whole quantity" in short
+    for text in (long, short):
+        assert "by <strong>15:15</strong>" in text and "by 14:45 at the latest" in text
+        assert "98.0" in text and "103.0" in text and "Never carry it overnight" in text
+        assert "exits everything at T1" in text      # T2 is not presented as the plan

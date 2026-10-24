@@ -14,7 +14,7 @@ import math
 import os
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import time as clock
+from datetime import datetime, time as clock, timedelta
 
 import numpy as np
 import pandas as pd
@@ -23,15 +23,20 @@ from app import data
 from app.intraday import archive
 from app.intraday.analysis import MIN_RR as LIVE_MIN_RR
 from app.intraday.economics import COST_PER_SIDE   # one cost assumption for live plans and the backtest
-from app.intraday.indicators import with_intraday_indicators
+from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF, with_intraday_indicators
 from app.intraday.setups import PLAYBOOKS, detect_setups
 from app.intraday.snapshot import assemble
 from app.universe import STOCKS
 
 LOOKBACK_SESSIONS = 5        # what Yahoo's 5-day view gives the live scanner
+def _bar_start(closes_at: clock) -> clock:
+    """Start of the 5-minute bar that closes at `closes_at` (bars are labelled by their start)."""
+    return (datetime.combine(datetime.min, closes_at) - timedelta(minutes=5)).time()
+
+
 FIRST_DECISION_START = clock(9, 25)    # the bar that CLOSES at 09:30, when the opening range is complete
-LAST_DECISION_START = clock(14, 40)    # closes 14:45: the live no-new-entries cutoff
-SQUARE_OFF_START = clock(15, 10)       # last bar used; closes 15:15
+LAST_DECISION_START = _bar_start(NO_NEW_ENTRIES)   # 14:40: closes at the live no-new-entries cutoff
+SQUARE_OFF_START = _bar_start(SQUARE_OFF)          # 15:10: last bar used, closes at the live time exit
 DECISION_EVERY_MIN = 15
 MIN_RR = LIVE_MIN_RR         # the same reward/risk bar as the live verdict (imported, never copied)
 LEDGER_PATH = data.DB_PATH.parent / "research" / "intraday_trades.csv.gz"

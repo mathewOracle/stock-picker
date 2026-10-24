@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import delta, intraday_badge, score_meter, signal_table, evidence_badge, trade_math_line %}
+{% from "_macros.html" import delta, intraday_badge, score_meter, signal_table, evidence_badge, trade_math_line, entry_exit_steps %}
 {% block title %}{{ r.name }} intraday - India Stock Picker{% endblock %}
 {% block content %}
 {% set sn = r.snapshot %}
@@ -46,6 +46,7 @@
           <dt class="text-slate-700">T1 / T2</dt><dd class="text-right text-green-800">{{ s.plan.target1 | num }} / {{ s.plan.target2 | num }}</dd>
           <dt class="text-slate-700">Risk / R:R</dt><dd class="text-right">{{ s.plan.risk_pct | pct(false, 2) }} / {{ s.plan.reward_risk | num }}</dd>
         </dl>
+        {% if r.best and s == r.best %}{{ entry_exit_steps(s) }}{% endif %}
       </div>
       {% else %}
       <p class="text-sm text-slate-800">No playbook setup is active on the latest bar.</p>

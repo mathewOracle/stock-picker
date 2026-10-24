@@ -69,6 +69,16 @@ doesn't improve the outcome; it just tempts you to override the stop.
 
 ## 2. Intraday trades (same-session, 5-minute bars)
 
+> **Honest status (backtest of 4,821 trades, Jul-Oct 2026): 0 of 14 setup/side combinations are
+> "supported".** Most lose money after costs; the rest have too few trades to judge
+> (`docs/INTRADAY_RESEARCH_PLAN.md`). So **Active setups** is normally empty, and that is the app's
+> real answer: no intraday trade. The steps below are how to trade a setup *if* one ever gets
+> supported, and they match exactly what the backtest does.
+
+Intraday means **in and out the same day**. Every trade has three ways out, whichever comes first:
+the **stop**, **Target 1**, or the **time exit at 15:15**. Nothing is ever held overnight. Intraday
+short-selling in the Indian cash market *must* be bought back the same day anyway.
+
 ### Step 1 — Check the market status banner at the top of `/intraday`
 It tells you the phase in plain words: *Pre-market*, *Opening range forming* (wait, don't enter),
 *Open: trading window* (the only phase accepting new entries), *Open: no new entries* (14:45
@@ -108,10 +118,49 @@ Use the **sizer** form at the top of the Active setups section (capital, risk% p
 computes shares from the entry/stop on each card, capped by what your capital can actually buy
 (no leverage assumed). Risk at most 1% of capital per trade.
 
-### Step 6 — Non-negotiable intraday discipline (also printed on the page itself)
+### Step 6 — Enter and exit (the same day, always)
+Every setup card prints these three steps with its own numbers. Here they are with an example: a
+**Long** opening-range breakout on a Rs 1,000 stock, card showing **Entry 1,000 / Stop 994 /
+T1 1,012 / T2 1,018**, capital Rs 1,00,000, risk 1%.
+
+1. **Size it.** Risk Rs 1,000 / Rs 6 per share = 166 shares. But 166 x Rs 1,000 is more than
+   your capital, so the sizer caps it at **100 shares** (no leverage assumed). Your real risk is
+   now Rs 600. That's fine, because smaller is always allowed.
+2. **Enter as the next 5-minute bar opens**, by **14:45** at the latest. Use a market order, with
+   the **Intraday / MIS** product (not delivery/CNC), and *Buy* for a long or *Sell* (short) for
+   a short. The signal comes from a bar that has already *closed*, which is why you act on the
+   next one. **Skip the trade** if price is already at or beyond the stop (994) or T1 (1,012):
+   the backtest skips those too.
+3. **Straight after the fill, place both exits** for the whole quantity:
+   - a **stop-loss order at 994** (SL-M, or SL with a small limit buffer so it fills in a fast
+     move), and
+   - a **limit order at T1, 1,012**.
+
+   When one fills, **cancel the other**. If your broker offers an OCO, bracket or cover order,
+   it does this for you.
+4. **Time exit: at 15:15, close whatever is still open at market.** That means sell a long, or
+   buy back a short. Don't wait for the broker's auto square-off at about 15:15-15:20: it
+   usually charges an extra fee and fills wherever it fills. In the backtest, 20-35% of trades
+   ended this way, so it is a normal exit, not an emergency.
+
+**What about T2?** It's shown as a stretch level only. The backtest exits the *whole* position
+at T1. Holding for T2 (or "half at T1, move the stop to breakeven", which is the *swing* exit) is
+a different plan that has never been tested.
+
+**What if...**
+
+| Situation | Do this |
+|---|---|
+| Your fill is a bit off the printed entry (e.g. 1,002) | Keep the printed stop and T1 levels. Don't recompute them; the backtest doesn't. |
+| It's 14:46 and the setup just appeared | No trade. The card will say so. |
+| The stop got hit, then price went to T1 anyway | That's a loss, and it's in the backtest numbers too. Don't re-enter the same setup that day. |
+| Your daily loss limit (e.g. 3R) is hit | Stop for the day, including setups that look perfect. |
+| Data looks stale (banner says "Data is from HH:MM") | Refresh. Check the live price in your broker before acting. |
+
+### Step 7 — Non-negotiable intraday discipline (also printed on the page itself)
 - Set a daily loss limit (e.g. 3R) and **stop trading for the day** when it's hit.
 - Place the stop with the order. Never widen it. Never average down a loser.
-- No new entries after 14:45 IST. Square off everything before the broker's auto square-off
+- No new entries after 14:45 IST. Close everything by 15:15, before the broker's auto square-off
   (roughly 15:15-15:20).
 - Yahoo's 5-minute bars can lag by a few minutes — confirm the actual price in your broker
   terminal before you click buy/sell.

@@ -15,6 +15,7 @@ from app.indicators import atr, ema, rsi, supertrend
 SESSION_OPEN = time(9, 15)
 OPENING_RANGE_END = time(9, 30)   # first 15 minutes
 NO_NEW_ENTRIES = time(14, 45)     # brokers square off intraday (MIS) positions ~15:15-15:20
+SQUARE_OFF = time(15, 15)         # our own time exit: flat before the broker does it for us (and charges for it)
 SESSION_CLOSE = time(15, 30)
 
 

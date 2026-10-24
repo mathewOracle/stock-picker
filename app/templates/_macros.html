@@ -64,6 +64,19 @@
   <span class="font-semibold {{ 'text-green-800' if m.clears else 'text-red-800' }}">{{ 'clears the bar' if m.clears else 'below the bar' }}</span>.{% else %}No backtest record to compare.{% endif %}</span>{% endif %}
 {%- endmacro %}
 
+{# Intraday: how to enter and exit, exactly as the backtest trades it (same day, flat by the time exit) #}
+{% macro entry_exit_steps(s) -%}
+{% set p = s.plan %}{% set long = s.side == 'Long' %}
+<ol class="mt-2 list-decimal space-y-1 pl-5 text-sm" aria-label="How to enter and exit this trade">
+  <li><strong>Enter</strong> as the next 5-minute bar opens: {{ 'buy' if long else 'short-sell' }} at market, intraday (MIS) product, by {{ no_new_entries }} at the latest.
+    Skip it if price is already at or beyond the stop ({{ p.stop | num }}) or T1 ({{ p.target1 | num }}).</li>
+  <li><strong>Straight after the fill</strong>, place a stop-loss order at <span class="text-red-800">{{ p.stop | num }}</span> and a limit order at T1 <span class="text-green-800">{{ p.target1 | num }}</span>,
+    both to {{ 'sell' if long else 'buy back' }} the whole quantity. When one fills, cancel the other.</li>
+  <li><strong>Time exit</strong>: if neither has filled by <strong>{{ square_off }}</strong>, {{ 'sell' if long else 'buy back' }} at market. Never carry it overnight.</li>
+</ol>
+<p class="mt-1 text-xs text-slate-700">T2 ({{ p.target2 | num }}) is a stretch level only: the backtest exits everything at T1, so holding for T2 is an untested plan.</p>
+{%- endmacro %}
+
 {# Signal table shared by every analysis section (swing pillars and intraday) #}
 {% macro signal_table(signals, caption) -%}
 <div class="overflow-x-auto">

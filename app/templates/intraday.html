@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import delta, intraday_badge, refresh_button, score_cell, evidence_badge, trade_math_line %}
+{% from "_macros.html" import delta, intraday_badge, refresh_button, score_cell, evidence_badge, trade_math_line, entry_exit_steps %}
 {% block title %}Intraday - India Stock Picker{% endblock %}
 {% block content %}
 {% set st = scan.status %}
@@ -23,7 +23,7 @@
   <p>{{ st.note }}</p>
   <p class="mt-1 text-sm">Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '–' }}
     &middot; Nifty today {{ delta(st.nifty_change) }}
-    &middot; Hours 09:15-15:30 IST; no new entries after 14:45 (intraday positions are squared off around 15:15-15:20).</p>
+    &middot; Hours 09:15-15:30 IST; no new entries after {{ no_new_entries }}; every trade is closed the same day, by {{ square_off }} at the latest (before the broker's auto square-off).</p>
 </section>
 
 {# ---- active setups + position sizing ---- #}
@@ -64,6 +64,7 @@
         <div><dt class="text-slate-700">R:R</dt><dd class="font-semibold">{{ p.reward_risk | num }}</dd></div>
         <div><dt class="text-slate-700">Qty</dt><dd class="font-semibold" data-qty>–</dd></div>
       </dl>
+      {{ entry_exit_steps(r.best) }}
     </article>
     {% else %}
     <p class="rounded border border-slate-300 bg-white p-4 text-slate-800 md:col-span-2">
@@ -185,7 +186,7 @@
     <li>Risk at most 1% of capital per trade. The Qty column sizes the position for you.</li>
     <li>Set a daily loss limit (for example 3R) and stop trading for the day when it is hit.</li>
     <li>Place the stop with the order. Never move it further away, and never average down a loser.</li>
-    <li>No new entries after 14:45. Close everything before the broker's auto square-off (about 15:15-15:20).</li>
+    <li>No new entries after {{ no_new_entries }}. Close everything by {{ square_off }}, before the broker's auto square-off (about 15:15-15:20, which usually costs an extra fee).</li>
     <li>Yahoo bars can lag by a few minutes. Confirm prices in your broker terminal before acting.</li>
   </ul>
 </section>
