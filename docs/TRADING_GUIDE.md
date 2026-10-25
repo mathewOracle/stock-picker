@@ -7,6 +7,28 @@ this if you want to know what to click, when, and why.
 **Not investment advice.** This tool surfaces evidence and gets out of the way; the decision,
 the capital, and the risk are yours.
 
+## Start the app
+
+First time on this machine? Do the one-time setup in the README's [Run](../README.md#run) section
+(create `.venv`, install, load the data). After that, every session is:
+
+```bash
+cd india-stock-picker
+./serve.sh                                            # http://127.0.0.1:61287 (Ctrl+C stops it)
+open http://127.0.0.1:61287                           # macOS; or paste the link into a browser
+```
+
+Prefer it in the background?
+
+```bash
+nohup ./serve.sh > /tmp/isp_server.log 2>&1 &         # start
+curl -s --noproxy '*' -o /dev/null -w "%{http_code}\n" http://127.0.0.1:61287/   # 200 = up
+kill $(lsof -t -nP -iTCP:61287 -sTCP:LISTEN)          # stop
+```
+
+Then refresh before you look at anything: **Refresh data** on the dashboard (after 16:00 IST for
+swing), **Refresh intraday** on `/intraday` (during market hours). Port taken? `./serve.sh 61288`.
+
 ---
 
 ## 0. The one rule that matters more than any indicator

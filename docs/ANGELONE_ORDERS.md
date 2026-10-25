@@ -8,6 +8,33 @@ other code. *What* to trade still comes only from this app's validated verdicts.
 `tests/test_broker_angelone.py`. **Nothing sends an order yet.** A live executor is a separate, deliberate step
 (see §6). Today no swing Buy and no intraday setup passes validation, so every ticket would be refused anyway.
 
+## Commands
+
+There is **no broker service to start**: nothing here connects to Angel One. The plans come from the app itself
+(start it with `./serve.sh`, see the README's [Run](../README.md#run) section).
+
+```bash
+# Check the order parameters (no network, no credentials):
+.venv/bin/python -m pytest -q tests/test_broker_angelone.py
+
+# Preview the exact request bodies for a plan (example numbers; take token + tick from the scrip master):
+.venv/bin/python - <<'EOF'
+from decimal import Decimal
+from types import SimpleNamespace
+
+from app.broker.angelone import Instrument, swing_ticket
+from app.tradeplan import TradePlan
+
+inst = Instrument("RELIANCE-EQ", "2885", Decimal("0.05"))
+report = SimpleNamespace(verdict="Buy", plan=TradePlan(2000, 1900, 2200, 2300, "example"))
+ticket = swing_ticket(report, inst, qty=10, open_price=2010)
+print(ticket.entry, *ticket.exits, ticket.time_exit, sep="\n")
+EOF
+```
+
+That prints a `BUY DELIVERY LIMIT` at 2020.05, a SELL GTT triggering at 1900 (limit 1862) and one at 2200, and
+"close of session 40". Change `verdict` to `"Watchlist"` and the ticket is refused, with the reason.
+
 ## 1. Sources
 
 | Source | What it gave | Verdict |

@@ -18,10 +18,46 @@ SmartAPI order parameters (`app/broker/angelone.py`, pure functions; nothing is 
 
 ## Run
 
+### 1. One-time setup (Python 3.11+, [uv](https://docs.astral.sh/uv/))
+
 ```bash
-uv venv && uv pip install -e . --group dev   # add the Walmart index flags on the corp network
-./serve.sh                                     # http://127.0.0.1:61287 (sets the corp proxy for you)
+cd india-stock-picker
+uv venv                                   # creates .venv
+
+# On the Walmart network (packages come from Artifactory):
+uv pip install -e . --group dev \
+  --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple \
+  --allow-insecure-host pypi.ci.artifacts.walmart.com
+
+# Anywhere else:
+uv pip install -e . --group dev
 ```
+
+### 2. Start and stop the service
+
+`serve.sh` starts the app on **http://127.0.0.1:61287**. It sets the corporate proxy for Yahoo Finance and refuses
+to start if the port is already taken.
+
+| What | Command |
+|---|---|
+| Start (foreground; `Ctrl+C` stops it) | `./serve.sh` |
+| Start on another port | `./serve.sh 61288` |
+| Start in the background, with a log | `nohup ./serve.sh > /tmp/isp_server.log 2>&1 &` |
+| Watch the log | `tail -f /tmp/isp_server.log` |
+| Check it's up (prints `200`) | `curl -s --noproxy '*' -o /dev/null -w "%{http_code}\n" http://127.0.0.1:61287/` |
+| Open it (macOS) | `open http://127.0.0.1:61287` |
+| Stop the background service | `kill $(lsof -t -nP -iTCP:61287 -sTCP:LISTEN)` |
+| Off the corporate network (no proxy) | `HTTPS_PROXY= ./serve.sh` |
+| Without the script | `.venv/bin/uvicorn app.main:app --port 61287` (set `HTTPS_PROXY` yourself on the corp network) |
+
+### 3. First run: load the data (in this order)
+
+1. **Dashboard** (`/`): click **Fetch market data**: daily prices and fundamentals. Later it reads **Refresh data**.
+2. **Intraday** (`/intraday`): click **Fetch intraday data**: the 5-minute bars Yahoo still serves (about 60
+   sessions), kept in an archive that grows with every refresh.
+3. **Research** (`/research`): click **Run research (backtest, news, model)**, or from a terminal:
+   `.venv/bin/python -m app.research all` (other steps: `backtest | news | news_history | study | intraday |
+   forward | model`). This is what validates or downgrades the verdicts, so run it before trusting any page.
 
 Refresh buttons run in the background with live progress and reload when done; failures show a
 visible error and keep the previous data. Daily refresh takes ~9s (fundamentals are re-fetched only
