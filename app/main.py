@@ -20,7 +20,7 @@ from app.jobs import RefreshJob
 from app.research import pipeline
 from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.research.ml import PROBA_GATE
-from app.scoring import GATES, PILLAR_WEIGHTS, VERDICTS, WATCHLIST
+from app.scoring import BUY_LEVELS, GATES, PILLAR_WEIGHTS, VERDICTS, WATCHLIST
 from app.universe import STOCKS
 
 BASE = Path(__file__).resolve().parent
@@ -30,8 +30,6 @@ app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 jobs = {"daily": RefreshJob(data.refresh), "intraday": RefreshJob(intraday_archive.refresh),
         "research": RefreshJob(pipeline.run_all)}
-
-BUY_VERDICTS = ("Strong Buy", "Buy")
 
 
 def _is_nan(value) -> bool:
@@ -71,8 +69,8 @@ def dashboard(request: Request):
     result = analysis.build()
     ctx = {
         "a": result, "nav": "swing",
-        "buys": [r for r in result.reports if r.verdict in BUY_VERDICTS],
-        "candidates": [r for r in result.reports if r.rule_verdict in BUY_VERDICTS and r.verdict not in BUY_VERDICTS],
+        "buys": [r for r in result.reports if r.verdict in BUY_LEVELS],
+        "candidates": [r for r in result.reports if r.rule_verdict in BUY_LEVELS and r.verdict not in BUY_LEVELS],
         "watchlist": [r for r in result.reports if r.verdict == "Watchlist"],
         "reports": result.reports,
         "sectors": sorted({r.metrics["sector"] for r in result.reports}),

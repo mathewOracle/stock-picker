@@ -13,6 +13,9 @@ Data from Yahoo Finance (may lag a few minutes), cached in SQLite. **Not investm
 to click, in what order, to go from a verdict on screen to a sized, placed trade -- for both the
 swing and intraday pages.
 
+**Broker orders:** [`docs/ANGELONE_ORDERS.md`](docs/ANGELONE_ORDERS.md) maps each validated plan to exact Angel One
+SmartAPI order parameters (`app/broker/angelone.py`, pure functions; nothing is sent to a broker yet).
+
 ## Run
 
 ```bash
@@ -149,7 +152,7 @@ per-feature information coefficients.
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # 220 tests, no network needed (~1.5 min; ML tests are slowest)
+.venv/bin/python -m pytest          # 244 tests, no network needed (~1.5 min; ML tests are slowest)
 node tests/js/position-size.test.js
 ```
 
