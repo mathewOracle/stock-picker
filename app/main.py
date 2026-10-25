@@ -18,6 +18,7 @@ from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF
 from app.intraday.setups import PLAYBOOKS
 from app.jobs import RefreshJob
 from app.research import pipeline
+from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.research.ml import PROBA_GATE
 from app.scoring import GATES, PILLAR_WEIGHTS, VERDICTS, WATCHLIST
 from app.universe import STOCKS
@@ -59,7 +60,8 @@ def timestamp(value) -> str:
 
 templates.env.filters.update(pct=pct, num=num, pe=pe, crore=crore, timestamp=timestamp,
                               evidence_note=intraday.describe_evidence)
-templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}")
+templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}",
+                             swing_max_hold=SWING_MAX_HOLD)  # the swing backtest's time exit, in sessions
 
 
 # ---------- swing / positional ----------

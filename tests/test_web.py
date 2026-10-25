@@ -74,6 +74,22 @@ def test_stock_detail_renders_all_pillars():
     assert page.status_code == 200
     for section in ("Fundamental analysis", "Technical analysis", "Chart analysis", "Trade plan", "Decision checklist"):
         assert section in page.text
+    # the swing plan is sized and spelled out on the page itself, with the same sizer as intraday
+    for piece in ('id="sizer"', "data-qty", "/static/position-size.js", "How to enter and exit"):
+        assert piece in page.text
+
+
+def test_swing_steps_trade_the_plan_exactly_as_the_backtest_does():
+    from types import SimpleNamespace
+
+    from app.research.backtest import MAX_HOLD
+
+    plan = SimpleNamespace(entry=2000.0, stop=1900.0, target1=2200.0, target2=2300.0)
+    text = str(main.templates.env.get_template("_macros.html").module.swing_entry_exit_steps(plan))
+    assert "next session's open" in text and "delivery (CNC)" in text            # backtest: enter at the next open
+    assert "1,900.00" in text and "2,200.00" in text and "whole quantity" in text  # stop / T1 for everything
+    assert f"close of session {MAX_HOLD}" in text                                 # time exit = MAX_HOLD, not a copy
+    assert "sells everything at T1" in text and "GTT" in text                     # T2 is not presented as the plan
 
 
 needs_intraday = pytest.mark.skipif(data.last_intraday_refresh() is None, reason="run an intraday refresh first")

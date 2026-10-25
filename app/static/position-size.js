@@ -1,4 +1,4 @@
-// Position sizing for intraday setup cards (any element with data-entry / data-stop).
+// Position sizing for any element with data-entry / data-stop (intraday setup cards, the swing trade plan).
 
 // Pure function (unit-testable with node): shares to buy so a stop-out loses capital x risk%.
 function positionSize(capital, riskPct, entry, stop) {

@@ -131,7 +131,7 @@ def train(df: pd.DataFrame) -> dict:
     final.fit(df[list(FEATURES)], df["label"])
     report = {**summary, "best": best, "adopted": adopted, "why": why, "trained_rows": int(len(df)),
               "period": [df["date"].min().strftime("%Y-%m-%d"), df["date"].max().strftime("%Y-%m-%d")],
-              "label": f"beats same-date median stock over next 20 sessions", "generated_at": time.time(),
+              "label": "beats same-date median stock over next 20 sessions", "generated_at": time.time(),
               "features": list(FEATURES), "importance": _importance(final, df)}
     return {"model": final, "report": report}
 

@@ -1,8 +1,6 @@
 """The incremental ledger must equal a from-scratch run, and must only compute what is new."""
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from app.research import ledger
 from app.research.backtest import FINAL_BARS, eval_dates, replay_stock

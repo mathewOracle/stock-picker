@@ -1,4 +1,3 @@
-import pytest
 
 from app.research.verdict import validate
 

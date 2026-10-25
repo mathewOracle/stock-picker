@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, score_meter, signal_table %}
+{% from "_macros.html" import badge, score_meter, signal_table, sizer_form, swing_entry_exit_steps %}
 {% block title %}{{ r.name }} - India Stock Picker{% endblock %}
 {% block content %}
 {% set m = r.metrics %}
@@ -41,7 +41,7 @@
     {% endif %}
   </section>
 
-  <section aria-labelledby="plan-h" class="rounded border border-slate-300 bg-white p-4">
+  <section aria-labelledby="plan-h" class="rounded border border-slate-300 bg-white p-4" data-entry="{{ r.plan.entry }}" data-stop="{{ r.plan.stop }}">
     <h2 id="plan-h" class="mb-2 font-bold">Trade plan</h2>
     <dl class="grid grid-cols-2 gap-y-1 text-sm">
       <dt class="text-slate-700">Entry (last close)</dt><dd class="text-right font-semibold">{{ r.plan.entry | num(2) }}</dd>
@@ -51,14 +51,21 @@
       <dt class="text-slate-700">Reward : risk</dt><dd class="text-right font-semibold">{{ r.plan.reward_risk | num }} : 1</dd>
       <dt class="text-slate-700">ATR (14)</dt><dd class="text-right">{{ m.atr | num(2) }}</dd>
       <dt class="text-slate-700">vs 20-EMA</dt><dd class="text-right">{{ m.extension | num }} ATR</dd>
+      <dt class="text-slate-700">Quantity</dt><dd class="text-right font-semibold" data-qty>–</dd>
     </dl>
+    <div class="mt-2">{{ sizer_form() }}</div>
     {% if 'Extended (chase risk)' in r.flags %}
     <p class="mt-2 rounded border border-amber-600 bg-amber-50 p-2 text-xs text-amber-900">
       Price is extended after a sharp run. A pullback toward the 20-EMA would offer a better entry and a tighter stop.
     </p>
     {% endif %}
     <p class="mt-2 text-xs text-slate-700">Stop basis: {{ r.plan.stop_basis }}. Targets are the next significant resistance levels (2R/3R if none).
-      Size positions so a stop-out costs at most 1-2% of your capital.</p>
+      Risk at most 1% of capital per trade; the quantity above is capped at what your capital can buy (no leverage).</p>
+    <h3 class="mt-3 text-sm font-bold">How to enter and exit</h3>
+    {% if r.verdict not in ('Strong Buy', 'Buy') %}
+    <p class="mt-1 rounded border border-slate-400 bg-slate-50 p-2 text-xs text-slate-900">This stock is <strong>{{ r.verdict }}</strong>, not a Buy: these steps show how the plan would be traded, not a suggestion to trade it.</p>
+    {% endif %}
+    {{ swing_entry_exit_steps(r.plan) }}
   </section>
 </div>
 

@@ -149,7 +149,7 @@ per-feature information coefficients.
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # 213 tests, no network needed (~1.5 min; ML tests are slowest)
+.venv/bin/python -m pytest          # 220 tests, no network needed (~1.5 min; ML tests are slowest)
 node tests/js/position-size.test.js
 ```
 

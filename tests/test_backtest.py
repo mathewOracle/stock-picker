@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.research import backtest as bt
 from app.research.backtest import COST_PER_SIDE, MAX_HOLD, non_overlapping, replay_stock, simulate
 from app.research.evidence import SHRINK_K, summarize
 from app.research.features import FEATURES

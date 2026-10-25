@@ -77,6 +77,33 @@
 <p class="mt-1 text-xs text-slate-700">T2 ({{ p.target2 | num }}) is a stretch level only: the backtest exits everything at T1, so holding for T2 is an untested plan.</p>
 {%- endmacro %}
 
+{# Swing: how to enter and exit, exactly as app/research/backtest.simulate trades it (whole position; stop / T1 / time exit) #}
+{% macro swing_entry_exit_steps(p) -%}
+<ol class="mt-2 list-decimal space-y-1 pl-5 text-sm" aria-label="How to enter and exit this trade">
+  <li><strong>Enter</strong> at the next session's open: buy at market with the delivery (CNC) product.
+    Skip it if the stock opens at or below the stop ({{ p.stop | num(2) }}) or at or above T1 ({{ p.target1 | num(2) }}).</li>
+  <li><strong>The same day</strong>, place a GTT OCO order (good-till-triggered, one-cancels-the-other) to sell the whole quantity:
+    stop at <span class="text-red-800">{{ p.stop | num(2) }}</span> and target at T1 <span class="text-green-800">{{ p.target1 | num(2) }}</span>.
+    A plain stop-loss order expires every evening; a GTT doesn't.</li>
+  <li><strong>Time exit</strong>: if neither has triggered by the close of session {{ swing_max_hold }} (entry day = session 1, about two months), sell at market that day.</li>
+</ol>
+<p class="mt-1 text-xs text-slate-700">T2 ({{ p.target2 | num(2) }}) is a stretch level only: the backtest sells everything at T1, so holding for T2 is an untested plan.
+  If the stock opens below the stop, it sells at the open: that loss is bigger than planned (the backtest counts it the same way).</p>
+{%- endmacro %}
+
+{# Position sizer: fills every [data-qty] inside an element carrying data-entry / data-stop (static/position-size.js) #}
+{% macro sizer_form() -%}
+<form id="sizer" class="flex flex-wrap gap-3 text-sm" aria-label="Position size calculator" onsubmit="return false">
+  <label>Capital (Rs)
+    <input name="capital" type="number" min="0" step="1000" value="100000" class="ml-1 w-28 rounded border border-slate-500 p-1">
+  </label>
+  <label>Risk per trade (%)
+    <input name="risk" type="number" min="0.1" max="5" step="0.1" value="1" class="ml-1 w-16 rounded border border-slate-500 p-1">
+  </label>
+</form>
+<script src="/static/position-size.js" defer></script>
+{%- endmacro %}
+
 {# Signal table shared by every analysis section (swing pillars and intraday) #}
 {% macro signal_table(signals, caption) -%}
 <div class="overflow-x-auto">

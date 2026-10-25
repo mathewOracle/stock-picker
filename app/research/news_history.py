@@ -9,9 +9,8 @@
 
 import re
 import time
-from calendar import monthrange
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 
 from app import data
 from app.research import news
