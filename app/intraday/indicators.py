@@ -5,7 +5,7 @@ Central Pivot Range (CPR), relative volume by time of day, and gap stats.
 """
 
 from dataclasses import dataclass
-from datetime import date, time
+from datetime import date, datetime, time, timedelta
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,15 @@ OPENING_RANGE_END = time(9, 30)   # first 15 minutes
 NO_NEW_ENTRIES = time(14, 45)     # brokers square off intraday (MIS) positions ~15:15-15:20
 SQUARE_OFF = time(15, 15)         # our own time exit: flat before the broker does it for us (and charges for it)
 SESSION_CLOSE = time(15, 30)
+BAR_MINUTES = 5
+
+
+def bar_start(closes_at: time) -> time:
+    """Start of the 5-minute bar that closes at `closes_at` (bars are labelled by their start)."""
+    return (datetime.combine(date.min, closes_at) - timedelta(minutes=BAR_MINUTES)).time()
+
+
+LAST_ENTRY_BAR = bar_start(NO_NEW_ENTRIES)   # 14:40: the last signal bar that may open a trade (live AND backtest)
 
 
 @dataclass(frozen=True)

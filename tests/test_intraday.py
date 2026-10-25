@@ -103,8 +103,8 @@ def test_hard_filters():
     assert any("Illiquid" in i for i in issues) and "Results today" in issues
 
 
-def _report(setups, bias=70, issues=()):
-    snap = build_snapshot(make_session_bars([[100] * 75, [100] * 75, [100] * 30]))
+def _report(setups, bias=70, issues=(), bars_today=30):
+    snap = build_snapshot(make_session_bars([[100] * 75, [100] * 75, [100] * bars_today]))
     return IntradayReport("X.NS", "X", "Tech", snap, CONTEXT, [], [], list(setups), list(issues),
                           scores={"technical": bias, "context": bias, "bias": bias})
 
@@ -166,6 +166,24 @@ def test_evidence_never_rescues_a_setup_that_fails_the_live_rules():
     assert decide(_report([poor], bias=80), OPEN, SUPPORTED)[0] == "No trade"
     assert decide(_report([_good()], bias=20), OPEN, SUPPORTED)[0] == "No trade"
     assert decide(_report([_good()], bias=80, issues=["Illiquid"]), OPEN, SUPPORTED)[0] == "No trade"
+
+
+def test_a_supported_setup_beats_a_higher_reward_risk_unsupported_one():
+    """Evidence is per playbook+side: picking by R:R alone would hide the only validated setup."""
+    flashy = Setup(PLAYBOOKS["pdh_break"], "Long", "pdh", TradePlan(100, 98, 106, 108, "x"))   # 3R, unsupported
+    verdict, _, best = decide(_report([flashy, _good()], bias=80), OPEN, SUPPORTED)          # orb: 2R, supported
+    assert verdict == "Long setup" and best.playbook.key == "orb"
+    assert decide(_report([flashy, _good()], bias=80), OPEN)[2] is flashy                    # no evidence: R:R decides
+
+
+@pytest.mark.parametrize("bars_today,verdict", [(66, "Long setup"), (67, "No trade"), (75, "No trade")])
+def test_no_entry_from_a_signal_bar_after_the_cutoff_even_when_the_market_is_closed(bars_today, verdict):
+    """Bar 66 starts 14:40 (closes 14:45, the backtest's last decision); 67+ is too late. CLOSED = evening view."""
+    closed = MarketStatus("Closed", False, False, None, None, "")
+    result = decide(_report([_good()], bias=80, bars_today=bars_today), closed, SUPPORTED)
+    assert result[0] == verdict and result[2] is not None
+    if verdict == "No trade":
+        assert "14:45" in result[1]
 
 
 # ---------- entry / exit guidance matches what the backtest trades ----------

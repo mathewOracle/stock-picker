@@ -13,7 +13,7 @@ from app import data
 from app.intraday.checks import DailyContext, intraday_context, intraday_technical, tradeability_issues
 from app.intraday.economics import describe as describe_math
 from app.intraday.economics import trade_math
-from app.intraday.indicators import NO_NEW_ENTRIES, OPENING_RANGE_END, SESSION_CLOSE, SESSION_OPEN
+from app.intraday.indicators import LAST_ENTRY_BAR, NO_NEW_ENTRIES, OPENING_RANGE_END, SESSION_CLOSE, SESSION_OPEN
 from app.intraday.setups import COUNTER_TREND, Setup, detect_setups
 from app.intraday.snapshot import Snapshot, build_snapshot
 from app.signals import Signal, score
@@ -134,16 +134,26 @@ def describe_evidence(block: dict) -> str:
             f"t {block['t_stat']:.1f})")
 
 
+def _too_late(report: IntradayReport, status: MarketStatus) -> bool:
+    """No new entry from a signal bar closing after NO_NEW_ENTRIES -- the backtest never opens one that late.
+
+    The wall clock catches lagging data during market hours; the bar time catches setups that fired on the
+    last session's closing bars and would otherwise look tradeable all evening.
+    """
+    return (status.is_open and not status.accepting_entries) or report.snapshot.day.index[-1].time() > LAST_ENTRY_BAR
+
+
 def decide(report: IntradayReport, status: MarketStatus, evidence: dict | None = None) -> tuple[str, str, Setup | None]:
     """Return (verdict, reason, best setup). Every 'No trade' says why.
 
     A setup that passes every live rule is only a *setup* if its playbook is also supported by the backtest;
-    otherwise it is shown as a *candidate* (same idea as Buy -> Watchlist on the swing side).
+    otherwise it is shown as a *candidate* (same idea as Buy -> Watchlist on the swing side). When several
+    setups pass, a supported one always beats an unsupported one, whatever their reward/risk.
     """
     if report.issues:
         return "No trade", "; ".join(report.issues), None
     if status.is_open and status.phase == "Opening range forming":
-        return "Wait", "Opening range forms until 09:30", None
+        return "Wait", f"Opening range forms until {OPENING_RANGE_END:%H:%M}", None
     if not report.setups:
         return "No trade", "No playbook setup active", None
     bias = report.scores["bias"]
@@ -153,9 +163,9 @@ def decide(report: IntradayReport, status: MarketStatus, evidence: dict | None =
     if not valid:
         why = "fights the intraday bias" if not aligned else f"reward/risk below {MIN_RR}"
         return "No trade", f"{report.setups[0].playbook.name} found, but it {why}", None
-    best = max(valid, key=lambda s: s.plan.reward_risk)
-    if status.is_open and not status.accepting_entries:
-        return "No trade", "After 14:45: no new entries, manage open positions only", best
+    best = max(valid, key=lambda s: (setup_evidence(evidence, s)["status"] == "supported", s.plan.reward_risk))
+    if _too_late(report, status):
+        return "No trade", f"Signal after {NO_NEW_ENTRIES:%H:%M}: no new entries (the backtest never opens a trade this late)", best
     block = setup_evidence(evidence, best)
     if block["status"] == "supported":
         return f"{best.side} setup", best.trigger, best

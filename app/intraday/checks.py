@@ -9,6 +9,7 @@ Context:   the slower, "fundamental" layer for day traders. Fundamentals don't m
 import math
 from dataclasses import dataclass
 
+from app.intraday.indicators import OPENING_RANGE_END
 from app.intraday.snapshot import Snapshot
 from app.signals import Signal, grade
 
@@ -55,7 +56,7 @@ def _vwap_trend(s: Snapshot) -> Signal:
 
 def _opening_range(s: Snapshot) -> Signal | None:
     if s.opening_range is None:
-        return Signal("Opening range (15 min)", "still forming", 0.0, 1.5, "Wait for 09:30 before trading breakouts.")
+        return Signal("Opening range (15 min)", "still forming", 0.0, 1.5, f"Wait for {OPENING_RANGE_END:%H:%M} before trading breakouts.")
     high, low = s.opening_range
     reading = f"OR {low:,.1f} - {high:,.1f}"
     if s.price > high:
