@@ -1,0 +1,11 @@
+{% if error %}
+<p role="alert" class="rounded border border-red-700 bg-red-50 p-3 text-red-950"><strong>Not recorded:</strong> {{ error }}</p>
+{% else %}
+<p class="rounded border border-green-700 bg-green-50 p-3 text-green-950"><strong>Recorded dry-run order #{{ row.id }}:</strong>
+  {{ row.side }} {{ row.qty }} &times; {{ row.symbol }}. <strong>Nothing was sent to Angel One.</strong> It is in the journal below.</p>
+{% endif %}
+{# the order is settled either way: swap the buttons so it cannot be confirmed twice #}
+<div id="ticket-actions" hx-swap-oob="true" class="mt-4 flex justify-end">
+  <form method="dialog"><button class="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900">Close</button></form>
+</div>
+{% set oob = true %}{% include "_journal.html" %}

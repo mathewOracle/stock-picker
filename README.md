@@ -88,6 +88,19 @@ CSS is committed so running the app does not).
 Verdict = playbook setup + bias agreement (long >= 55, short <= 45; fades exempt) + R:R >= 1.5 +
 tradeable (liquid, >= 1% ATR, not results day) + time rules (wait until 09:30, no entries after 14:45).
 
+## Order desk (`/desk`)
+
+One page per stock: every swing signal (fundamental, technical, chart) as a filterable, sortable, searchable list; each row
+opens to what it means and its **track record** (`research/signal_record.py`: rank correlation with the next 20 days' return,
+thinned t-statistic, Bonferroni-corrected bar). Below it, a **Place an order** card for swing and intraday.
+
+* The button only enables for a validated Buy / backtest-supported setup; otherwise it says why not. It never overrides the verdict.
+* It opens a ticket (side, product, quantity, entry limit, stop, T1, most you lose, time exit, exact Angel One request bodies).
+* **Dry run only.** Confirming appends the ticket to `data/broker/orders.jsonl` (git-ignored). Nothing is sent to a broker.
+* The server rebuilds the ticket itself (`broker/desk.py`): the browser sends only symbol, mode, capital, risk and a quantity that
+  can only shrink. Risk is capped at 1%, one order per mode/symbol/day, and POST needs the HTMX header.
+* Tokens come from Angel One's scrip master saved as `data/broker/scrip_master.json`; without it the ticket says the token is a placeholder.
+
 ## Architecture (`app/`)
 
 | Module | Job |
@@ -188,7 +201,7 @@ per-feature information coefficients.
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # 244 tests, no network needed (~1.5 min; ML tests are slowest)
+.venv/bin/python -m pytest          # 268 tests, no network needed (~1.5 min; ML tests are slowest)
 node tests/js/position-size.test.js
 ```
 

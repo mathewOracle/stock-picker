@@ -1,0 +1,26 @@
+<section id="journal" {% if oob %}hx-swap-oob="true"{% endif %} aria-labelledby="jr-h" class="mb-6 rounded border border-slate-300 bg-white p-4">
+  <h2 id="jr-h" class="text-lg font-bold">Dry-run order journal</h2>
+  <p class="text-xs text-slate-700">Newest first. Kept in <code>data/broker/orders.jsonl</code>, which git ignores. Nothing here reached a broker.</p>
+  {% if orders %}
+  <div class="mt-2 overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <caption class="sr-only">Recorded dry-run orders</caption>
+      <thead class="bg-slate-100"><tr>
+        {% for h in ['#', 'Recorded', 'Mode', 'Order', 'Entry limit', 'Stop trigger', 'Target (T1)', 'Instrument'] %}<th scope="col" class="p-2">{{ h }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for o in orders %}
+        <tr class="border-t border-slate-200">
+          <td class="p-2">{{ o.id }}</td><td class="p-2">{{ o.at.replace('T', ' ') }}</td><td class="p-2 capitalize">{{ o.mode }}</td>
+          <td class="p-2 font-semibold">{{ o.side }} {{ o.qty }} &times; {{ o.symbol }}</td>
+          <td class="p-2">{{ o.entry.price }}</td><td class="p-2">{{ o.exits[0].triggerprice }}</td><td class="p-2">{{ o.exits[1].price }}</td>
+          <td class="p-2">{{ 'verified' if o.instrument_verified else 'placeholder token' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="mt-2 text-sm text-slate-800">No orders recorded yet.</p>
+  {% endif %}
+</section>

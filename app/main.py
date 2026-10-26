@@ -3,6 +3,7 @@
 import math
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
@@ -11,13 +12,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import analysis, data
+from app.broker import desk
 from app.intraday import analysis as intraday
 from app.intraday import archive as intraday_archive
 from app.intraday.checks import MIN_ATR_PCT, MIN_TRADED_VALUE_CR
 from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF
 from app.intraday.setups import PLAYBOOKS
 from app.jobs import RefreshJob
-from app.research import pipeline
+from app.research import pipeline, signal_record
 from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.research.ml import PROBA_GATE
 from app.scoring import BUY_LEVELS, GATES, PILLAR_WEIGHTS, VERDICTS, WATCHLIST
@@ -117,6 +119,80 @@ def intraday_stock(request: Request, symbol: str):
         raise HTTPException(404, "Unknown symbol, or no intraday data yet - refresh on the Intraday page")
     ctx = {"r": report, "status": scan.status, "chart": intraday.chart_payload(report), "nav": "intraday"}
     return templates.TemplateResponse(request, "intraday_stock.html", ctx)
+
+
+# ---------- order desk: every signal for one stock, plus a (dry-run) order ticket ----------
+
+DESK_CAPITAL, DESK_RISK = 100_000, 1.0   # the sizer's defaults; the browser can change them per request
+Mode = Literal["swing", "intraday"]
+
+
+def _desk_report(symbol: str, mode: Mode):
+    report = (analysis.build() if mode == "swing" else intraday.build()).get(symbol)
+    if report is None:
+        raise HTTPException(404, f"No {mode} analysis for {symbol}: refresh the data first")
+    return report
+
+
+def _draft(symbol: str, mode: Mode, capital: float, risk: float, qty: int | None) -> desk.Draft:
+    report = _desk_report(symbol, mode)
+    ref = desk.swing_reference(symbol) if mode == "swing" else desk.intraday_reference(report)
+    return desk.build_draft(mode, symbol, report, ref, capital, risk, qty)
+
+
+def _signal_rows(report) -> list[dict]:
+    records = signal_record.records()
+    return [{"s": s, "pillar": label, "record": records.get(s.name), "evidence": signal_record.describe(records.get(s.name))}
+            for label, _, signals in report.pillars for s in signals]
+
+
+def _order_cards(symbol: str, report) -> list[dict]:
+    cards = [{"mode": "swing", "title": f"Swing order (delivery, up to {SWING_MAX_HOLD} sessions)", "verdict": report.verdict,
+              "draft": _draft(symbol, "swing", DESK_CAPITAL, DESK_RISK, None), "plan": report.plan, "why": report.blockers}]
+    live = intraday.build().get(symbol)
+    if live is not None:
+        plan = live.best.plan if live.best else None
+        cards.append({"mode": "intraday", "title": "Intraday order (same day, flat by " + f"{SQUARE_OFF:%H:%M})",
+                      "verdict": live.verdict, "draft": _draft(symbol, "intraday", DESK_CAPITAL, DESK_RISK, None),
+                      "plan": plan, "why": [live.reason]})
+    return cards
+
+
+@app.get("/desk", response_class=HTMLResponse)
+def desk_page(request: Request, symbol: str = ""):
+    result = analysis.build()
+    report = result.get(symbol) if symbol else (result.reports[0] if result.reports else None)
+    if report is None:
+        raise HTTPException(404, "Unknown symbol, or no data yet - hit Refresh on the dashboard")
+    rows = _signal_rows(report)
+    proven = sum(1 for row in rows if row["record"] and row["record"]["status"] == "edge")
+    tested = sum(1 for row in rows if row["record"] and row["record"]["status"] != "insufficient")
+    ctx = {"r": report, "rows": rows, "proven": proven, "tested": tested, "cards": _order_cards(report.symbol, report),
+           "orders": desk.recent_orders(), "nav": "desk", "bar": signal_record.bar(),
+           "stocks": [(r.symbol, r.name, r.verdict) for r in result.reports], "capital": DESK_CAPITAL, "risk": DESK_RISK}
+    partial = request.headers.get("HX-Request") and not request.headers.get("HX-History-Restore-Request")
+    return templates.TemplateResponse(request, "_desk_panel.html" if partial else "desk.html", ctx)
+
+
+@app.get("/desk/ticket", response_class=HTMLResponse)
+def desk_ticket(request: Request, symbol: str, mode: Mode, capital: float = DESK_CAPITAL, risk: float = DESK_RISK,
+                qty: int | None = None):
+    draft = _draft(symbol, mode, capital, risk, qty)
+    return templates.TemplateResponse(request, "_ticket.html", {"d": draft, "capital": capital})
+
+
+@app.post("/desk/order", response_class=HTMLResponse)
+def desk_order(request: Request, symbol: str, mode: Mode, capital: float = DESK_CAPITAL, risk: float = DESK_RISK,
+               qty: int | None = None):
+    if not request.headers.get("HX-Request"):   # a cross-site form cannot set this header
+        raise HTTPException(403, "Orders can only be recorded from the desk page")
+    ctx = {"orders": None, "row": None, "error": ""}
+    try:
+        ctx["row"] = desk.record(_draft(symbol, mode, capital, risk, qty), datetime.now())
+    except desk.OrderRefused as exc:   # 200 on purpose: htmx does not swap 4xx responses
+        ctx["error"] = str(exc)
+    ctx["orders"] = desk.recent_orders()
+    return templates.TemplateResponse(request, "_order_result.html", ctx)
 
 
 # ---------- research & validation ----------
