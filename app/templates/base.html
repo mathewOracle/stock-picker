@@ -2,26 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f2f2f7">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Stock Picker">
   <title>{% block title %}India Stock Picker{% endblock %}</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icon.svg">
+  <link rel="manifest" href="/static/manifest.webmanifest">
   {# precompiled + minified Tailwind (see scripts/build_css.sh); vendored JS, no CDN dependency #}
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/vendor/htmx.min.js" defer></script>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased">
-  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-white focus:p-2">Skip to content</a>
-  <header class="bg-slate-900 text-white">
-    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-3">
-      <a href="/" class="text-lg font-bold">India Stock Picker</a>
-      <nav aria-label="Main">
-        <a href="/" {% if nav == 'desk' %}aria-current="page"{% endif %}
-           class="block rounded px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-white {{ 'bg-white text-slate-900' if nav == 'desk' else 'text-slate-100 hover:bg-slate-700' }}">Order desk</a>
-      </nav>
+<body class="min-h-screen">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:p-3 focus:shadow-card">Skip to content</a>
+  <header class="sticky top-0 z-30 border-b border-slate-900/10 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5">
+      <a href="/" class="flex items-center gap-2 rounded-lg text-base font-bold tracking-tight text-slate-900">
+        <img src="/static/icon.svg" alt="" width="28" height="28" class="h-7 w-7">India Stock Picker</a>
+      <div class="flex items-center gap-2">
+        {# a safety fact, so it is on every page: nothing here can reach a broker #}
+        <span class="pill bg-amber-100 text-amber-950 ring-1 ring-amber-700">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-700" aria-hidden="true"></span>Dry run<span class="sr-only">: orders are only written to a local journal, nothing is sent to a broker</span></span>
+        <nav aria-label="Main" class="hidden sm:block">
+          <a href="/" {% if nav == 'desk' %}aria-current="page"{% endif %} class="btn btn-sm btn-quiet aria-[current=page]:bg-white aria-[current=page]:shadow-sm">Order desk</a>
+        </nav>
+      </div>
     </div>
   </header>
-  <main id="main" class="mx-auto max-w-7xl px-4 py-6">{% block content %}{% endblock %}</main>
-  <footer class="mx-auto max-w-7xl px-4 pb-10 text-sm text-slate-700">
-    <p class="rounded border border-amber-300 bg-amber-50 p-3">
+  <main id="main" class="mx-auto max-w-7xl px-4 pb-6 pt-5">{% block content %}{% endblock %}</main>
+  <footer class="mx-auto max-w-7xl px-4 {{ 'pb-28' if nav == 'desk' else 'pb-10' }} text-sm text-slate-700 lg:pb-10">
+    <p class="notice border-amber-600 bg-amber-50 text-amber-950">
       <strong>Not investment advice.</strong> Suggestions come from a mechanical, backward-looking rule set built on
       Yahoo Finance data, which can be delayed or wrong. They ignore news, management quality, taxes and your own
       goals. Intraday trading is high risk: most retail day traders lose money. Do your own research or talk to a

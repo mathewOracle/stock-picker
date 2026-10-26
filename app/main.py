@@ -62,7 +62,8 @@ templates.env.filters.update(pct=pct, num=num, pe=pe, crore=crore, timestamp=tim
                               evidence_note=intraday.describe_evidence)
 templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}",
                              swing_max_hold=SWING_MAX_HOLD,  # the swing backtest's time exit, in sessions
-                             long_bias=intraday.LONG_BIAS, short_bias=intraday.SHORT_BIAS)
+                             long_bias=intraday.LONG_BIAS, short_bias=intraday.SHORT_BIAS,
+                             max_risk_pct=desk.MAX_RISK_PCT)  # one source for the risk cap: forms and orders agree
 
 
 # ---------- market overview (the old swing dashboard) ----------
@@ -200,6 +201,8 @@ def desk_order(request: Request, symbol: str, mode: Mode, capital: float = deskv
     _require_htmx(request)
     ctx = {"orders": None, "row": None, "error": ""}
     try:
+        if (fresh := deskview.symbol_freshness(symbol, mode))["stale"]:   # never build an order on old prices
+            raise desk.OrderRefused(fresh["why"])
         ctx["row"] = desk.record(deskview.draft(symbol, mode, capital, risk, qty), datetime.now())
     except deskview.NoAnalysis as exc:
         raise HTTPException(404, str(exc))

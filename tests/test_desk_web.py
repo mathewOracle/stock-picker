@@ -33,6 +33,7 @@ def validated_buy(monkeypatch):
     """No stock passes validation today, so fake one: the flow below is what happens the day one does."""
     monkeypatch.setattr(deskview, "report_for", lambda symbol, tab: BUY)
     monkeypatch.setattr(desk, "swing_reference", lambda symbol: (100.0, "test open"))
+    monkeypatch.setattr(deskview, "symbol_freshness", lambda symbol, tab: {"label": "just now", "stale": False, "why": ""})
 
 
 def numbers(html: str, attribute: str) -> list[float]:
@@ -207,6 +208,22 @@ def test_order_is_recorded_once_and_never_duplicated(validated_buy):
     second = client.post("/desk/order?symbol=TEST.NS&mode=swing&qty=5", headers=HX)
     assert second.status_code == 200 and "already recorded" in second.text   # 200: htmx won't swap a 4xx
     assert len(desk.JOURNAL.read_text().splitlines()) == 1
+
+
+def test_stale_prices_block_the_order_on_the_card_and_on_the_server(validated_buy, monkeypatch):
+    stale = {"label": "6 days ago", "stale": True, "why": "Daily prices are 6 days old: re-analyse or refresh before ordering."}
+    monkeypatch.setattr(deskview, "symbol_freshness", lambda symbol, tab: stale)
+    card = deskview.order_card("TEST.NS", "swing", BUY)
+    assert card["blocked"] == stale["why"]
+    response = client.post("/desk/order?symbol=TEST.NS&mode=swing&qty=5", headers=HX)   # a hand-made request, past the card
+    assert "Not recorded" in response.text and "6 days old" in response.text
+    assert not desk.JOURNAL.exists()
+
+
+@needs_cache
+def test_risk_input_cannot_promise_more_than_the_server_allows():
+    html = client.get("/").text
+    assert f'max="{desk.MAX_RISK_PCT}"' in html and "max 1)" in html
 
 
 def test_order_quantity_cannot_exceed_the_risk_rule(validated_buy):

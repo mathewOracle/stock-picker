@@ -6,7 +6,7 @@
   'Watchlist': 'bg-blue-100 text-blue-900 ring-1 ring-blue-700',
   'Hold': 'bg-slate-200 text-slate-900',
   'Avoid': 'bg-red-100 text-red-900 ring-1 ring-red-700'} %}
-<span class="inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-semibold {{ styles[verdict] }}">{{ verdict }}</span>
+<span class="pill {{ styles[verdict] }}">{{ verdict }}</span>
 {%- endmacro %}
 
 {% macro delta(value) -%}
@@ -19,9 +19,9 @@
 {%- endmacro %}
 
 {% macro pillar_scores(r) -%}
-<dl class="grid grid-cols-3 gap-1 text-center text-xs">
+<dl class="grid grid-cols-3 gap-2 text-center text-xs">
   {% for key, label in [('fundamental', 'Fund.'), ('technical', 'Tech.'), ('chart', 'Chart')] %}
-  <div class="rounded bg-slate-100 p-1"><dt class="text-slate-700">{{ label }}</dt><dd class="text-sm">{{ score_cell(r.scores[key]) }}</dd></div>
+  <div class="rounded-xl bg-slate-100 px-2 py-2"><dt class="text-slate-700">{{ label }}</dt><dd class="text-lg leading-tight">{{ score_cell(r.scores[key]) }}</dd></div>
   {% endfor %}
 </dl>
 {%- endmacro %}
@@ -35,8 +35,7 @@
 {% macro refresh_button(name, label) -%}
 <div class="flex flex-wrap items-center gap-3">
   <div id="refresh-{{ name }}" aria-live="polite"></div>
-  <button hx-post="/refresh/{{ name }}" hx-target="#refresh-{{ name }}" hx-swap="innerHTML"
-          class="rounded bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900">
+  <button hx-post="/refresh/{{ name }}" hx-target="#refresh-{{ name }}" hx-swap="innerHTML" class="btn btn-sm btn-dark">
     {{ label }}
   </button>
 </div>
@@ -47,7 +46,7 @@
                  'Long candidate': 'bg-blue-100 text-blue-900 ring-1 ring-blue-700',
                  'Short candidate': 'bg-blue-100 text-blue-900 ring-1 ring-blue-700',
                  'Wait': 'bg-amber-100 text-amber-900 ring-1 ring-amber-700', 'No trade': 'bg-slate-200 text-slate-900'} %}
-<span class="inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-semibold {{ styles.get(verdict, 'bg-slate-200 text-slate-900') }}">{{ verdict }}</span>
+<span class="pill {{ styles.get(verdict, 'bg-slate-200 text-slate-900') }}">{{ verdict }}</span>
 {%- endmacro %}
 
 {# Backtest evidence behind a single playbook+side: this is what decide() uses to gate 'setup' vs 'candidate' #}
@@ -93,13 +92,12 @@
 
 {# Position sizer: fills every [data-qty] inside an element carrying data-entry / data-stop (static/position-size.js) #}
 {% macro sizer_form() -%}
-<form id="sizer" class="flex flex-wrap gap-3 text-sm" aria-label="Position size calculator" onsubmit="return false">
-  <label>Capital (Rs)
-    <input name="capital" type="number" min="0" step="1000" value="100000" class="ml-1 w-28 rounded border border-slate-500 p-1">
-  </label>
-  <label>Risk per trade (%)
-    <input name="risk" type="number" min="0.1" max="5" step="0.1" value="1" class="ml-1 w-16 rounded border border-slate-500 p-1">
-  </label>
+{# Risk is capped at 1% because that is what the server enforces when it builds an order: the form must not promise more #}
+<form id="sizer" class="grid max-w-md grid-cols-2 gap-3 text-sm" aria-label="Position size calculator" onsubmit="return false">
+  <label><span class="label">Capital (Rs)</span>
+    <input name="capital" type="number" inputmode="numeric" min="0" step="1000" value="100000" class="field"></label>
+  <label><span class="label">Risk per trade (%, max {{ max_risk_pct | num(0) }})</span>
+    <input name="risk" type="number" inputmode="decimal" min="0.1" max="{{ max_risk_pct }}" step="0.1" value="{{ max_risk_pct }}" class="field"></label>
 </form>
 <script src="/static/position-size.js" defer></script>
 {%- endmacro %}

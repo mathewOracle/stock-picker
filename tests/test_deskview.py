@@ -60,6 +60,25 @@ def test_intraday_signals_get_their_two_pillars_and_an_honest_evidence_note():
     assert "backtested as a whole" in rows[0]["evidence"]
 
 
+NOW = 1_800_000_000.0
+
+
+def test_freshness_swing_tolerates_a_long_weekend_but_not_a_week():
+    assert not deskview.freshness(NOW - 3 * 86_400, "swing", False, NOW)["stale"]
+    old = deskview.freshness(NOW - 5 * 86_400, "swing", False, NOW)
+    assert old["stale"] and old["label"] == "5 days ago" and "5 days old" in old["why"]
+
+
+def test_freshness_intraday_only_ages_while_the_market_is_open():
+    assert deskview.freshness(NOW - 20 * 60, "intraday", True, NOW)["stale"]
+    assert not deskview.freshness(NOW - 20 * 60, "intraday", False, NOW)["stale"]     # after the close the last bars ARE the latest
+    assert deskview.freshness(NOW - 30, "intraday", True, NOW) == {"label": "just now", "stale": False, "why": ""}
+
+
+def test_never_fetched_data_is_always_stale():
+    assert deskview.freshness(None, "swing", False, NOW)["stale"]
+
+
 def test_evidence_counts_ignore_signals_without_enough_history():
     rows = [{"record": {"status": "edge"}}, {"record": {"status": "none"}}, {"record": {"status": "insufficient"}},
             {"record": None}]

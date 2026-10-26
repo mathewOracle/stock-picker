@@ -1,0 +1,6 @@
+{% from "_icons.html" import icon %}
+{# Phones only: the detail is a pushed full-screen view, so it needs a way back (like a native stack navigator) #}
+<div class="sticky top-0 z-10 -mx-4 mb-3 flex items-center gap-1 border-b border-slate-900/10 bg-canvas/90 px-2 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md lg:hidden">
+  <button type="button" data-close-detail class="btn btn-sm btn-quiet -ml-1 pl-1">{{ icon('chevron-left') }}Stocks</button>
+  <span class="truncate text-sm font-semibold" aria-hidden="true">{{ r.name }}</span>
+</div>

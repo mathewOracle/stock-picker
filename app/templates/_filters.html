@@ -1,0 +1,35 @@
+{% from "_icons.html" import icon %}
+{# Collapsible "Filter & sort" card, folded so the list starts high; its summary always shows "Showing N of M". The caller fills the body. #}
+{% macro filter_card(target) -%}
+<details data-filters class="card group mb-3">
+  <summary class="flex min-h-[2.75rem] list-none items-center gap-2 rounded-2xl px-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+    {{ icon('filter', 'h-4 w-4') }}Filter &amp; sort
+    <span data-count-for="{{ target }}" class="ml-auto text-xs font-normal text-slate-600"></span>
+    <span class="transition group-open:rotate-180">{{ icon('chevron-down', 'h-4 w-4') }}</span>
+  </summary>
+  <div class="space-y-3 border-t border-slate-200 p-4 text-sm">{{ caller() }}</div>
+</details>
+{%- endmacro %}
+
+{# A status banner: the headline is always visible; on phones the detail is one tap away (open on desktop) #}
+{% macro banner(tone, headline) -%}
+<details data-desktop-open class="notice group {{ tone }}">
+  <summary class="flex min-h-6 list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
+    <strong>{{ headline }}</strong>
+    <span class="ml-auto mt-0.5 transition group-open:rotate-180 lg:hidden">{{ icon('chevron-down', 'h-4 w-4') }}</span>
+  </summary>
+  <p class="mt-1">{{ caller() }}</p>
+</details>
+{%- endmacro %}
+
+{# A labelled row of toggle chips that filter `target` by data-{key} #}
+{% macro chip_group(target, key, legend, options) -%}
+<div role="group" aria-labelledby="grp-{{ target[1:] }}-{{ key }}">
+  <p id="grp-{{ target[1:] }}-{{ key }}" class="label">{{ legend }}</p>
+  <div class="flex flex-wrap gap-1.5">
+    {% for value, text in options %}
+    <button type="button" data-target="{{ target }}" data-filter="{{ key }}" data-value="{{ value }}" aria-pressed="{{ 'true' if value == 'all' else 'false' }}" class="chip">{{ text }}</button>
+    {% endfor %}
+  </div>
+</div>
+{%- endmacro %}

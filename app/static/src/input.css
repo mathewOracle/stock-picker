@@ -1,3 +1,110 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* =====================================================================================================
+   India Stock Picker design system. Templates use these named components instead of long class strings,
+   so one change here restyles every page. Tokens (colours, shadows, easing) are in tailwind.config.js.
+   ===================================================================================================== */
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    /* WCAG 2.4.11 Focus Not Obscured: the sticky app bar (top) and tab bar (bottom, phones) never hide the focused element */
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: 6rem;
+  }
+  @media (min-width: 1024px) { html { scroll-padding-bottom: 1rem; } }
+  body { @apply bg-canvas text-slate-900 antialiased; }
+  :focus-visible { outline: 2px solid theme("colors.accent.DEFAULT"); outline-offset: 2px; }
+  summary { @apply cursor-pointer; }
+  [hidden] { display: none !important; }
+  /* htmx only fades its indicators; hide them completely so an idle one doesn't leave a blank gap */
+  .htmx-indicator { display: none; }
+  .htmx-request.htmx-indicator, .htmx-request .htmx-indicator { display: inline; }
+
+  /* WCAG 2.3.3: no slide or press animation for people who asked the OS for less motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  }
+}
+
+@layer components {
+  /* ---- surfaces ---- */
+  .card { @apply rounded-2xl bg-white shadow-card ring-1 ring-slate-900/5; }
+  .card-pad { @apply p-4 sm:p-5; }
+  .notice { @apply rounded-2xl border-l-4 p-4 text-sm shadow-card; }
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-wide text-slate-600; }   /* grouped-list section label */
+  .link { @apply font-medium text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent; }
+
+  /* ---- buttons: 44px tall (Apple HIG / Material touch target; WCAG 2.5.8 needs 24px) ---- */
+  .btn {
+    @apply inline-flex min-h-[2.75rem] select-none items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold
+           transition duration-150 ease-native active:scale-[0.97]
+           disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100;
+  }
+  .btn-sm { @apply min-h-[2.25rem] rounded-lg px-3; }                                   /* 36px */
+  .btn-primary { @apply bg-accent text-white shadow-sm hover:bg-accent-pressed; }
+  .btn-dark { @apply bg-slate-900 text-white shadow-sm hover:bg-slate-700; }
+  .btn-success { @apply bg-green-700 text-white shadow-sm hover:bg-green-800; }
+  .btn-secondary { @apply bg-white text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50; }
+  .btn-quiet { @apply text-accent hover:bg-blue-50; }
+
+  /* ---- chips and segmented controls: the selected state is a filled dark pill (well above 3:1 against unselected) ---- */
+  .chip {
+    @apply inline-flex min-h-[2.25rem] items-center rounded-full border border-slate-400 bg-white px-3 text-sm font-medium text-slate-800
+           transition duration-150 ease-native hover:bg-slate-50 active:scale-[0.96]
+           aria-pressed:border-slate-900 aria-pressed:bg-slate-900 aria-pressed:text-white;
+  }
+  .chip-buy { @apply border-green-700 text-green-900 aria-pressed:border-green-700 aria-pressed:bg-green-700; }
+  .chip-short { @apply border-red-700 text-red-900 aria-pressed:border-red-700 aria-pressed:bg-red-700; }
+  .segmented { @apply inline-flex gap-1 rounded-xl bg-slate-200 p-1; }
+  .segment {
+    @apply inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-lg px-4 text-sm font-semibold text-slate-700 transition duration-150 ease-native
+           hover:bg-white/60 hover:text-slate-900 aria-[current=page]:bg-slate-900 aria-[current=page]:text-white aria-[current=page]:shadow-sm;
+  }
+
+  /* ---- form fields: the boundary is slate-500 (4.8:1) because WCAG 1.4.11 needs 3:1 to find the field ---- */
+  .label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600; }
+  .field {
+    @apply block w-full rounded-xl border-0 bg-white px-3 py-2 text-sm text-slate-900 ring-1 ring-inset ring-slate-500
+           placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent;
+  }
+
+  /* ---- grouped lists ---- */
+  .list-group { @apply divide-y divide-slate-200 overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-slate-900/5; }
+  .list-row { @apply flex w-full items-center gap-3 px-4 py-3 text-left transition duration-150 hover:bg-slate-50 active:bg-slate-100; }
+  .avatar { @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-xs font-bold text-slate-700; }
+  .pill { @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+  .meter { @apply relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200; }
+
+  /* ---- bottom tab bar (phones) ---- */
+  .tabbar { @apply fixed inset-x-0 bottom-0 z-30 border-t border-slate-900/10 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden; }
+  .tabbar-item { @apply flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-600; }
+  .tabbar-icon { @apply grid h-7 w-12 place-items-center rounded-full transition duration-150 ease-native; }
+  .tabbar-item[aria-current="page"] { @apply text-slate-900; }
+  .tabbar-item[aria-current="page"] .tabbar-icon { @apply bg-slate-900 text-white; }
+
+  /* ---- dialogs: a bottom sheet on phones, a centred card from sm up ---- */
+  .sheet {
+    @apply mb-0 mt-auto max-h-[92vh] w-full max-w-full overflow-y-auto rounded-t-3xl border-0 bg-white p-0 shadow-sheet
+           backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm sm:m-auto sm:rounded-2xl;
+  }
+  .sheet[open] { animation: sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .sheet-handle { @apply mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-300 sm:hidden; }
+}
+
+@keyframes sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---- stock detail: inline next to the list on desktop, a pushed full-screen view on phones (like a native stack navigator) ---- */
+@media (max-width: 1023.98px) {
+  .detail-pane {
+    position: fixed; inset: 0; z-index: 40; overflow-y: auto; overscroll-behavior: contain;
+    background: theme("colors.canvas");
+    padding: 0 1rem calc(2rem + env(safe-area-inset-bottom));
+    transform: translateX(100%); visibility: hidden;
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.3s;
+  }
+  [data-detail-open] .detail-pane { transform: none; visibility: visible; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  body:has([data-detail-open]) { overflow: hidden; }
+}

@@ -1,10 +1,13 @@
-{# Re-analyse ONE stock: re-download its data and recompute. Needs: tab, r, fetched, notice (optional). #}
-<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+{% from "_icons.html" import icon %}
+{# Re-analyse ONE stock: re-download its data and recompute. Needs: tab, r, fetched, fresh, notice (optional). #}
+<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
   <button type="button" hx-post="/reanalyse?tab={{ tab }}&amp;symbol={{ r.symbol | urlencode }}" hx-target="#detail" hx-disabled-elt="this" hx-indicator="#reanalyse-wait"
-          class="rounded bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 disabled:opacity-60">Re-analyse {{ r.name }}</button>
+          aria-label="Re-analyse {{ r.name }}" class="btn btn-sm btn-dark">{{ icon('refresh', 'h-4 w-4') }}<span>Re-analyse<span class="hidden sm:inline"> {{ r.name }}</span></span></button>
   <span id="reanalyse-wait" class="htmx-indicator text-sm font-semibold" role="status">Re-downloading&hellip;</span>
-  <span class="text-xs text-slate-700">{{ 'Daily prices and statements' if tab == 'swing' else '5-minute bars' }} fetched {{ fetched | timestamp }}</span>
+  <span class="text-xs text-slate-600">{{ 'Daily prices and statements' if tab == 'swing' else '5-minute bars' }} fetched {{ fetched | timestamp }}
+    &middot; <strong class="{{ 'text-amber-900' if fresh.stale else 'text-slate-800' }}">{{ fresh.label }}</strong></span>
+  {% if fresh.stale %}<span class="pill bg-amber-100 text-amber-950 ring-1 ring-amber-700">Stale</span>{% endif %}
 </div>
 {% if notice %}
-<p role="{{ 'status' if notice.ok else 'alert' }}" class="mt-2 rounded border p-2 text-sm {{ 'border-green-700 bg-green-50 text-green-950' if notice.ok else 'border-red-700 bg-red-50 text-red-950' }}">{{ notice.text }}</p>
+<p role="{{ 'status' if notice.ok else 'alert' }}" class="notice mt-3 {{ 'border-green-700 bg-green-50 text-green-950' if notice.ok else 'border-red-700 bg-red-50 text-red-950' }}">{{ notice.text }}</p>
 {% endif %}

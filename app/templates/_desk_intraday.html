@@ -1,43 +1,34 @@
 {% from "_rows.html" import intraday_row %}
+{% from "_filters.html" import filter_card, chip_group, banner %}
 {% from "_macros.html" import delta %}
 {% set st = scan.status %}
-<p class="mb-4 rounded border-l-4 p-3 text-sm {{ 'border-green-700 bg-green-50' if st and st.is_open else 'border-slate-500 bg-slate-100' }}">
-  {% if st %}<strong>Market: {{ st.phase }}.</strong> {{ st.note }} Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '-' }}
-  &middot; Nifty today {{ delta(st.nifty_change) }} &middot; no new entries after {{ no_new_entries }}; every trade is closed by {{ square_off }}.
-  {% else %}<strong>No intraday data yet.</strong>{% endif %}</p>
+<div class="mb-4 lg:mb-5">
+{% call banner('border-green-700 bg-green-50 text-green-950' if st and st.is_open else 'border-slate-500 bg-white', ('Market: ' ~ st.phase ~ '.') if st else 'No intraday data yet.') %}
+  {% if st %}{{ st.note }} Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '-' }}
+  &middot; Nifty today {{ delta(st.nifty_change) }} &middot; no new entries after {{ no_new_entries }}; every trade is closed by {{ square_off }}.{% endif %}
+{% endcall %}
+</div>
 
 {% if not has_data %}
-<p class="rounded border border-slate-300 bg-white p-8 text-center text-slate-800">No intraday data yet. Load daily data on the Swing tab first, then use <strong>Fetch intraday data</strong> above (about 10 seconds).</p>
+<p class="card card-pad text-center text-slate-800">No intraday data yet. Load daily data on the Swing tab first, then use <strong>Fetch intraday data</strong> above (about 10 seconds).</p>
 {% else %}
-<div class="grid gap-4 lg:grid-cols-[23rem_minmax(0,1fr)]">
+<div class="grid gap-5 lg:grid-cols-[24rem_minmax(0,1fr)]">
   <section aria-labelledby="list-h" class="min-w-0">
-    <h2 id="list-h" class="mb-2 text-lg font-bold">Stocks by intensity</h2>
-    <div class="mb-2 space-y-2 rounded border border-slate-300 bg-white p-3 text-sm">
-      <div role="group" aria-label="Rank by" class="flex flex-wrap items-center gap-1">
-        <span class="font-semibold">Rank by</span>
-        <button type="button" data-target="#intraday-list" data-sort="-buy" aria-pressed="{{ 'true' if rank == 'long' else 'false' }}"
-                class="rounded border border-green-800 px-2 py-0.5 text-green-950 hover:bg-green-50 aria-pressed:bg-green-800 aria-pressed:text-white focus:outline-none focus:ring-2 focus:ring-slate-900">Buy intensity</button>
-        <button type="button" data-target="#intraday-list" data-sort="-short" aria-pressed="{{ 'true' if rank == 'short' else 'false' }}"
-                class="rounded border border-red-800 px-2 py-0.5 text-red-950 hover:bg-red-50 aria-pressed:bg-red-800 aria-pressed:text-white focus:outline-none focus:ring-2 focus:ring-slate-900">Short intensity</button>
-      </div>
-      {% for key, legend, options in [('kind', 'Show', [('all', 'All'), ('setup', 'Setups'), ('candidate', 'Candidates'), ('wait', 'Wait'), ('none', 'No trade')]),
-                                      ('lean', 'Bias', [('all', 'Any'), ('long', 'Long-leaning'), ('short', 'Short-leaning')])] %}
-      <div role="group" aria-label="{{ legend }}" class="flex flex-wrap items-center gap-1">
-        <span class="font-semibold">{{ legend }}</span>
-        {% for value, label in options %}
-        <button type="button" data-target="#intraday-list" data-filter="{{ key }}" data-value="{{ value }}" aria-pressed="{{ 'true' if value == 'all' else 'false' }}"
-                class="rounded border border-slate-500 px-2 py-0.5 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white focus:outline-none focus:ring-2 focus:ring-slate-900">{{ label }}</button>
-        {% endfor %}
-      </div>
-      {% endfor %}
-      <label class="block font-semibold">Search
-        <input type="search" data-target="#intraday-list" data-search placeholder="name or symbol" class="ml-1 w-36 rounded border border-slate-500 p-1 font-normal"></label>
-      <p data-count-for="#intraday-list" role="status" class="text-xs text-slate-700"></p>
+    <h2 id="list-h" class="eyebrow mb-2 px-1">Stocks by intensity</h2>
+    <div role="group" aria-label="Rank by" class="mb-3 grid grid-cols-2 gap-1.5">
+      <button type="button" data-target="#intraday-list" data-sort="-buy" aria-pressed="{{ 'true' if rank == 'long' else 'false' }}" class="chip chip-buy justify-center">Buy intensity</button>
+      <button type="button" data-target="#intraday-list" data-sort="-short" aria-pressed="{{ 'true' if rank == 'short' else 'false' }}" class="chip chip-short justify-center">Short intensity</button>
     </div>
-    <ul id="intraday-list" data-default-sort="{{ '-short' if rank == 'short' else '-buy' }}" aria-label="Stocks ranked by intensity" class="max-h-[70vh] overflow-y-auto rounded border border-slate-300 bg-white">
+    {% call filter_card('#intraday-list') %}
+      {{ chip_group('#intraday-list', 'kind', 'Show', [('all', 'All'), ('setup', 'Setups'), ('candidate', 'Candidates'), ('wait', 'Wait'), ('none', 'No trade')]) }}
+      {{ chip_group('#intraday-list', 'lean', 'Bias', [('all', 'Any'), ('long', 'Long-leaning'), ('short', 'Short-leaning')]) }}
+      <label class="block"><span class="label">Search</span>
+        <input type="search" data-target="#intraday-list" data-search placeholder="Name or symbol" class="field"></label>
+    {% endcall %}
+    <ul id="intraday-list" data-default-sort="{{ '-short' if rank == 'short' else '-buy' }}" aria-label="Stocks ranked by intensity" class="list-group lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto">
       {% for row in stocks %}{{ intraday_row(row, selected, rank) }}{% endfor %}
     </ul>
   </section>
-  <div id="detail" class="min-w-0">{% include "_detail_intraday.html" %}</div>
+  <div id="detail" class="detail-pane min-w-0">{% include "_detail_intraday.html" %}</div>
 </div>
 {% endif %}

@@ -1,45 +1,44 @@
 {% from "_macros.html" import tone_label %}
+{% from "_filters.html" import chip_group %}
 {# Every signal behind a verdict, filterable in the browser. Needs: signals (rows), pillars (names), tab. #}
-<section aria-labelledby="sig-h" class="mb-4 rounded border border-slate-300 bg-white p-4">
-  <h3 id="sig-h" class="text-lg font-bold">Signals</h3>
-  <p class="text-sm text-slate-800">Open a row for what it means{% if tab == 'swing' %} and how that signal has actually performed{% endif %}.</p>
-  <div class="my-3 flex flex-wrap items-end gap-4 text-sm">
-    <label class="font-semibold">Search
-      <input type="search" data-target="#signal-list" data-search placeholder="e.g. RSI" class="ml-1 w-36 rounded border border-slate-500 p-1 font-normal"></label>
-    <label class="font-semibold">Sort
-      <select data-target="#signal-list" data-sort class="ml-1 rounded border border-slate-500 bg-white p-1 font-normal">
-        <option value="+order">Pillar order</option><option value="-absimpact">Biggest impact</option><option value="-weight">Highest weight</option>
-      </select></label>
-    {% for key, legend, options in [('tone', 'Signal', ['all', 'bullish', 'neutral', 'bearish']), ('pillar', 'Pillar', ['all'] + (pillars | list))] %}
-    <div role="group" aria-label="{{ legend }}" class="flex flex-wrap items-center gap-1">
-      <span class="font-semibold">{{ legend }}</span>
-      {% for option in options %}
-      <button type="button" data-target="#signal-list" data-filter="{{ key }}" data-value="{{ option }}" aria-pressed="{{ 'true' if option == 'all' else 'false' }}"
-              class="rounded border border-slate-500 px-2 py-0.5 capitalize hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white focus:outline-none focus:ring-2 focus:ring-slate-900">{{ option }}</button>
-      {% endfor %}
+<section aria-labelledby="sig-h" class="card card-pad mb-4">
+  <h3 id="sig-h" class="text-lg font-bold tracking-tight">Signals</h3>
+  <p class="text-sm text-slate-600">Open a row for what it means{% if tab == 'swing' %} and how that signal has actually performed{% endif %}.</p>
+  <div class="my-4 space-y-3 text-sm">
+    <div class="grid grid-cols-2 gap-3 sm:max-w-md">
+      <label><span class="label">Search</span><input type="search" data-target="#signal-list" data-search placeholder="e.g. RSI" class="field"></label>
+      <label><span class="label">Sort</span>
+        <select data-target="#signal-list" data-sort class="field">
+          <option value="+order">Pillar order</option><option value="-absimpact">Biggest impact</option><option value="-weight">Highest weight</option>
+        </select></label>
     </div>
-    {% endfor %}
+    <div class="flex flex-wrap gap-x-6 gap-y-3">
+      {{ chip_group('#signal-list', 'tone', 'Signal', [('all', 'All'), ('bullish', 'Bullish'), ('neutral', 'Neutral'), ('bearish', 'Bearish')]) }}
+      {% set pillar_options = [('all', 'All')] %}{% for p in pillars %}{% set _ = pillar_options.append((p, p)) %}{% endfor %}
+      {{ chip_group('#signal-list', 'pillar', 'Pillar', pillar_options) }}
+    </div>
   </div>
-  <p data-count-for="#signal-list" role="status" class="mb-2 text-xs text-slate-700"></p>
-  <div id="signal-list" data-default-sort="+order" class="space-y-1">
+  <p data-count-for="#signal-list" role="status" class="mb-2 text-xs text-slate-600"></p>
+  <div id="signal-list" data-default-sort="+order" class="space-y-1.5">
     {% for row in signals %}{% set s = row.s %}
     <details data-pillar="{{ row.pillar }}" data-tone="{{ s.tone if s.weight else 'neutral' }}" data-name="{{ s.name | lower }}" data-order="{{ loop.index }}"
-             data-impact="{{ s.impact }}" data-absimpact="{{ s.impact | abs }}" data-weight="{{ s.weight }}" class="rounded border border-slate-200 bg-slate-50 open:bg-white">
-      <summary class="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 p-2 focus:outline-none focus:ring-2 focus:ring-slate-900">
-        <span class="w-52 font-semibold">{{ s.name }}</span>
-        <span class="min-w-[9rem] flex-1">{{ s.reading }}</span>
+             data-impact="{{ s.impact }}" data-absimpact="{{ s.impact | abs }}" data-weight="{{ s.weight }}"
+             class="rounded-xl bg-slate-50 open:bg-white open:shadow-card open:ring-1 open:ring-slate-200">
+      <summary class="flex min-h-[2.75rem] flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-2">
+        <span class="w-48 font-semibold">{{ s.name }}</span>
+        <span class="min-w-[8rem] flex-1">{{ s.reading }}</span>
         <span class="w-20">{{ tone_label(s.tone) if s.weight else 'Info' }}</span>
-        <span class="flex w-36 items-center gap-2" title="Points {{ '%+.2f' | format(s.points) }} x weight {{ s.weight }}">
-          <span class="relative h-2 w-20 rounded bg-slate-200" aria-hidden="true">
-            <span class="absolute top-0 h-2 rounded {{ 'bg-green-700 left-1/2' if s.points >= 0 else 'bg-red-700 right-1/2' }}" style="width: {{ (s.points | abs) * 50 }}%"></span></span>
+        <span class="flex w-32 items-center gap-2" title="Points {{ '%+.2f' | format(s.points) }} x weight {{ s.weight }}">
+          <span class="meter w-20 flex-none" aria-hidden="true">
+            <span class="absolute top-0 h-1.5 rounded-full {{ 'bg-green-700 left-1/2' if s.points >= 0 else 'bg-red-700 right-1/2' }}" style="width: {{ (s.points | abs) * 50 }}%"></span></span>
           <span class="text-xs tabular-nums">{{ '%+.2f' | format(s.impact) }}</span>
         </span>
-        <span class="text-xs text-slate-700">{{ row.pillar }}</span>
+        <span class="text-xs text-slate-600">{{ row.pillar }}</span>
       </summary>
-      <div class="space-y-1 border-t border-slate-200 p-3 text-sm">
+      <div class="space-y-1 border-t border-slate-200 px-3 py-3 text-sm">
         <p>{{ s.note }}</p>
-        <p class="text-slate-800">Weight <strong>{{ s.weight }}</strong>, points <strong>{{ '%+.2f' | format(s.points) }}</strong> (range -1 to +1), contribution <strong>{{ '%+.2f' | format(s.impact) }}</strong>.</p>
-        <p class="{{ 'text-green-800' if row.record and row.record.status == 'edge' else 'text-red-800' if row.record and row.record.status == 'wrong way' else 'text-slate-800' }}">
+        <p class="text-slate-700">Weight <strong>{{ s.weight }}</strong>, points <strong>{{ '%+.2f' | format(s.points) }}</strong> (range -1 to +1), contribution <strong>{{ '%+.2f' | format(s.impact) }}</strong>.</p>
+        <p class="{{ 'text-green-800' if row.record and row.record.status == 'edge' else 'text-red-800' if row.record and row.record.status == 'wrong way' else 'text-slate-700' }}">
           <strong>Track record:</strong> {{ row.evidence }}</p>
       </div>
     </details>

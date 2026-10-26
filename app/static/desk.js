@@ -61,7 +61,7 @@
 
   function markSelected() {
     const symbol = $('#detail [data-symbol]')?.dataset.symbol;
-    $$('nav[aria-label="Trading style"] a').forEach((tab) => {   // switching tabs keeps the stock you are looking at
+    $$('a[data-tab]').forEach((tab) => {   // switching tabs keeps the stock you are looking at
       for (const attribute of ['href', 'hx-get']) {
         const url = new URL(tab.getAttribute(attribute), location.origin);
         if (symbol) url.searchParams.set('symbol', symbol);
@@ -76,6 +76,42 @@
     });
   }
 
+  // ---- phones: the detail is a pushed full-screen view (a native "stack" screen) ----
+  const phone = matchMedia('(max-width: 1023.98px)');
+  const deskRoot = () => $('#desk');
+
+  // everything outside the open pane becomes inert (WCAG 2.4.3 / 2.1.2: focus can't wander behind it); dialogs stay usable
+  function setBackgroundInert(on) {
+    if (!on) { $$('[data-inert-by-pane]').forEach((el) => { el.inert = false; el.removeAttribute('data-inert-by-pane'); }); return; }
+    for (let node = $('#detail'); node && node !== document.body; node = node.parentElement) {
+      [...node.parentElement.children].forEach((sibling) => {
+        if (sibling === node || sibling.tagName === 'DIALOG' || sibling.tagName === 'SCRIPT' || sibling.id === 'desk-status') return;
+        sibling.inert = true;
+        sibling.setAttribute('data-inert-by-pane', '');
+      });
+    }
+  }
+
+  function openDetail() {
+    if (!phone.matches || !deskRoot()) return;
+    deskRoot().setAttribute('data-detail-open', '');
+    setBackgroundInert(true);
+    $('#detail').scrollTop = 0;
+    $('#sum-h')?.focus({ preventScroll: true });
+  }
+
+  function closeDetail() {
+    if (!deskRoot()?.hasAttribute('data-detail-open')) return;
+    deskRoot().removeAttribute('data-detail-open');
+    setBackgroundInert(false);
+    $('li[id^="row-"] button[aria-current="true"]')?.focus();   // back where the user came from
+  }
+
+  phone.addEventListener('change', closeDetail);   // rotating to a wide screen: the pane becomes a normal column again
+
+  // status banners: open on desktop, folded to their headline on phones so the list starts near the top
+  const syncDisclosures = () => $$('details[data-desktop-open]').forEach((card) => { card.open = !phone.matches; });
+
   function refreshAll() {
     $$('[data-default-sort]').forEach(apply);
     markSelected();
@@ -86,6 +122,7 @@
   const listFor = (control) => $(control.dataset.target);
 
   document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-close-detail]')) { closeDetail(); return; }
     const button = event.target.closest('button[data-target]');
     const list = button && listFor(button);
     if (!list) return;
@@ -118,6 +155,7 @@
 
   // arrow keys step through the visible stocks, so the desk can be driven without a mouse
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !$('dialog[open]') && deskRoot()?.hasAttribute('data-detail-open')) { closeDetail(); return; }
     if (!['ArrowDown', 'ArrowUp'].includes(event.key) || !event.target.closest('li[id^="row-"]')) return;
     const rows = $$('li[id^="row-"]', event.target.closest('ul')).filter((row) => !row.hidden);
     const at = rows.indexOf(event.target.closest('li'));
@@ -136,13 +174,15 @@
     }
     if (id === 'desk' || id === 'detail') {
       refreshAll();
-      // below the lg breakpoint the detail panel sits under the list: show the user what their tap did
-      if (id === 'detail' && matchMedia('(max-width: 1023px)').matches) $('#detail').scrollIntoView({ block: 'start' });
+      if (id === 'desk') { closeDetail(); syncDisclosures(); }
+      // a stock chosen from the list: on a phone, push its screen (a Re-analyse inside the open pane keeps it open)
+      if (id === 'detail' && event.detail.requestConfig?.elt?.closest('li[id^="row-"]')) openDetail();
       const what = id === 'detail' ? $('#sum-h')?.textContent.trim() : `the ${$('[aria-current="page"]')?.textContent.trim().split(' ')[0]} tab`;
       $('#desk-status').textContent = `Showing ${what}`;
     }
   });
-  document.body.addEventListener('htmx:historyRestore', refreshAll);
+  document.body.addEventListener('htmx:historyRestore', () => { setBackgroundInert(!!deskRoot()?.hasAttribute('data-detail-open')); refreshAll(); });
 
+  syncDisclosures();
   refreshAll();
 })();

@@ -1,0 +1,13 @@
+{# Inline icons (stroke = currentColor, decorative: the text next to them carries the meaning) #}
+{% macro icon(name, size='h-5 w-5') -%}
+{% set paths = {
+  'swing': '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+  'intraday': '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  'orders': '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  'chevron-right': '<path d="M9 6l6 6-6 6"/>',
+  'chevron-left': '<path d="M15 6l-6 6 6 6"/>',
+  'chevron-down': '<path d="M6 9l6 6 6-6"/>',
+  'refresh': '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+  'filter': '<path d="M4 6h16M7 12h10M10 18h4"/>'} %}
+<svg class="{{ size }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">{{ paths[name] | safe }}</svg>
+{%- endmacro %}

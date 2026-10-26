@@ -1,0 +1,11 @@
+{
+  "name": "India Stock Picker",
+  "short_name": "Stock Picker",
+  "description": "Explainable NSE stock screener with a dry-run order desk",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7",
+  "icons": [{ "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

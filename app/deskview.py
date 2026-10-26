@@ -6,6 +6,7 @@ Buy intensity is the app's own 0-100 score for the tab: the composite score (swi
 Short intensity only exists intraday, where a short is a real trade: it is 100 - bias.
 """
 
+import time
 from datetime import datetime
 
 from app import analysis, data
@@ -19,8 +20,11 @@ from app.universe import STOCKS
 
 TABS = ("swing", "intraday")
 RANKS = ("long", "short")
-DESK_CAPITAL, DESK_RISK = 100_000, 1.0   # the sizer's defaults; the browser can change them per request
+DESK_CAPITAL, DESK_RISK = 100_000, desk.MAX_RISK_PCT   # the sizer defaults; the browser can lower them per request
 SWING_PILLARS, INTRADAY_PILLARS = ("Fundamental", "Technical", "Chart"), ("Technical", "Context")
+KIND = {"swing": "ohlcv", "intraday": "intraday"}   # cache key prefix per tab
+SWING_STALE_AFTER = 4 * 86_400       # seconds: a weekend plus one market holiday is normal, more is not
+INTRADAY_STALE_AFTER = 15 * 60       # seconds, and only while the market is open (after the close the last bars ARE the latest)
 INTRADAY_SIGNAL_NOTE = ("Intraday signals are not scored one by one: the playbook setups are backtested as a whole "
                         "(see Research & validation).")
 
@@ -31,6 +35,33 @@ class UnknownSymbol(LookupError):
 
 class NoAnalysis(LookupError):
     """The symbol is valid but this side has no analysis for it yet (no data fetched)."""
+
+
+# ---------- data age: the "don't trade on old prices" rule, in one place ----------
+
+def _span(seconds: float) -> str:
+    minutes, hours, days = seconds / 60, seconds / 3600, seconds / 86_400
+    return f"{minutes:.0f} min" if hours < 1 else f"{hours:.0f} h" if days < 2 else f"{days:.0f} days"
+
+
+def freshness(fetched: float | None, tab: str, market_open: bool, now: float) -> dict:
+    """How old a stock's data is, whether that is too old to place an order on, and why."""
+    if fetched is None:
+        return {"label": "never fetched", "stale": True, "why": "No data has been fetched for this stock yet: refresh first."}
+    age = max(0.0, now - fetched)
+    limit = SWING_STALE_AFTER if tab == "swing" else INTRADAY_STALE_AFTER if market_open else None
+    stale = limit is not None and age > limit
+    what = "Daily prices" if tab == "swing" else "The 5-minute bars"
+    return {"label": "just now" if age < 60 else f"{_span(age)} ago", "stale": stale,
+            "why": f"{what} are {_span(age)} old: re-analyse or refresh before ordering." if stale else ""}
+
+
+def _market_open(tab: str) -> bool:
+    return tab == "intraday" and bool(getattr(intraday.build().status, "is_open", False))
+
+
+def symbol_freshness(symbol: str, tab: str) -> dict:
+    return freshness(data.symbol_fetched_at(symbol, KIND[tab]), tab, _market_open(tab), time.time())
 
 
 # ---------- reports and drafts ----------
@@ -58,8 +89,9 @@ def order_card(symbol: str, mode: str, report) -> dict:
     else:
         extra = {"title": f"Intraday order (same day, flat by {SQUARE_OFF:%H:%M})",
                  "plan": report.best.plan if report.best else None, "why": [report.reason]}
+    fresh = symbol_freshness(symbol, mode)
     return {"mode": mode, "verdict": report.verdict, "draft": draft(symbol, mode, DESK_CAPITAL, DESK_RISK, None, report),
-            "recorded": desk.recorded_today(mode, symbol, datetime.now()), **extra}
+            "recorded": desk.recorded_today(mode, symbol, datetime.now()), "blocked": fresh["why"], **extra}
 
 
 # ---------- signals ----------
@@ -116,7 +148,7 @@ def pick(rows: list[dict], symbol: str):
 
 def detail_context(tab: str, report) -> dict:
     ctx = {"tab": tab, "r": report, "signals": signal_rows(report, tab), "card": order_card(report.symbol, tab, report),
-           "fetched": data.symbol_fetched_at(report.symbol, "ohlcv" if tab == "swing" else "intraday")}
+           "fetched": data.symbol_fetched_at(report.symbol, KIND[tab]), "fresh": symbol_freshness(report.symbol, tab)}
     ctx["proven"], ctx["tested"] = evidence_counts(ctx["signals"])
     ctx["bar"] = signal_record.bar()
     ctx["pillars"] = SWING_PILLARS if tab == "swing" else INTRADAY_PILLARS
@@ -131,8 +163,9 @@ def page_context(tab: str, symbol: str, rank: str) -> dict:
     selected = pick(rows, symbol)
     ctx = {"tab": tab, "rank": rank, "stocks": rows, "selected": selected, "capital": DESK_CAPITAL, "risk": DESK_RISK,
            "sectors": sorted({row["r"].metrics["sector"] for row in rows}) if tab == "swing" else [],
-           "oldest": data.oldest_stock_refresh("ohlcv" if tab == "swing" else "intraday"),
+           "oldest": data.oldest_stock_refresh(KIND[tab]),
            "orders": desk.recent_orders()}
+    ctx["oldest_fresh"] = freshness(ctx["oldest"], tab, _market_open(tab), time.time())
     ctx["a" if tab == "swing" else "scan"] = result
     if selected is not None:
         ctx.update(detail_context(tab, selected))

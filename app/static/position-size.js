@@ -14,7 +14,8 @@ if (typeof document !== 'undefined') {
   if (form) {
     const update = () => {
       const capital = Number(form.capital.value) || 0;
-      const riskPct = Number(form.risk.value) || 0;
+      // the input's max is the server's cap (desk.MAX_RISK_PCT): typing more must not show a bigger size than an order would get
+      const riskPct = Math.min(Number(form.risk.value) || 0, Number(form.risk.max) || Infinity);
       document.querySelectorAll('[data-entry][data-stop]').forEach((card) => {
         const out = card.querySelector('[data-qty]');
         if (!out) return;
