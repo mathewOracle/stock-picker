@@ -26,7 +26,7 @@ curl -s --noproxy '*' -o /dev/null -w "%{http_code}\n" http://127.0.0.1:61287/  
 kill $(lsof -t -nP -iTCP:61287 -sTCP:LISTEN)          # stop
 ```
 
-Then refresh before you look at anything: **Refresh data** on the dashboard (after 16:00 IST for
+Then refresh before you look at anything: **Refresh swing data** on the order desk (after 16:00 IST for
 swing), **Refresh intraday** on `/intraday` (during market hours). Port taken? `./serve.sh 61288`.
 
 ---
@@ -58,7 +58,7 @@ A swing trade is **held overnight, typically for 1-3 weeks** (backtest average: 
 trade has three ways out, whichever comes first: the **stop**, **Target 1**, or the **time exit at
 session 40** (about two months).
 
-### Step 1 — Open the dashboard (`/`)
+### Step 1 — Open the order desk (`/`, Swing tab)
 Check **Market regime** first (top of the page). A "Correction / Bearish" regime is a message to
 size down and be selective, not a reason to stop reading. The gates below already account for
 price action, but they don't know your personal risk budget. The **Validation** box underneath

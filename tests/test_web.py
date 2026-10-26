@@ -63,7 +63,7 @@ def test_refresh_success_triggers_reload(monkeypatch):
 
 @needs_cache
 def test_dashboard_and_table_render():
-    page = client.get("/")
+    page = client.get("/market")
     assert page.status_code == 200 and "Suggested buys" in page.text and "Watchlist" in page.text
     assert client.get("/table", params={"verdict": "Avoid"}).status_code == 200
 

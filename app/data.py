@@ -191,6 +191,11 @@ def _fetch_fundamentals(symbol: str, session: curl_requests.Session) -> dict:
     return {"info": {key: info.get(key) for key in INFO_FIELDS}, "statements": _statements(ticker)}
 
 
+def _save_frames(conn: sqlite3.Connection, frames: dict[str, pd.DataFrame], prefix: str, fmt: str) -> None:
+    for symbol, frame in frames.items():
+        _save(conn, f"{prefix}:{symbol}", _serialize(frame, fmt))
+
+
 def refresh(progress: Progress = _no_progress) -> RefreshResult:
     """Daily prices for everything; fundamentals only where stale. Raises RefreshError on total failure."""
     started, session = time.time(), _fresh_session()
@@ -201,8 +206,7 @@ def refresh(progress: Progress = _no_progress) -> RefreshResult:
         raise RefreshError("Could not reach Yahoo Finance. Check VPN/proxy and try again. "
                            "Showing previously cached data.")
     with _connect() as conn:
-        for symbol, frame in prices.items():
-            _save(conn, f"ohlcv:{symbol}", _serialize(frame, DAILY_FMT))
+        _save_frames(conn, prices, "ohlcv", DAILY_FMT)
         stale = [s for s in STOCKS
                  if (age := _age(conn, FUNDAMENTALS_KEY.format(s))) is None or age > FUNDAMENTALS_TTL]
 
@@ -223,17 +227,36 @@ def refresh(progress: Progress = _no_progress) -> RefreshResult:
     return RefreshResult(len(prices), failed, time.time() - started, len(fundamentals))
 
 
-def refresh_intraday(progress: Progress = _no_progress) -> RefreshResult:
-    """5-minute bars for the last 5 sessions (stocks + Nifty) in one batched call."""
+def refresh_symbol(symbol: str) -> RefreshResult:
+    """Re-analyse ONE stock: its daily prices (plus Nifty, which relative strength needs) and its statements, right now.
+
+    Statements are always re-fetched here (one stock, one request); the all-stocks refresh only does it when stale.
+    """
+    if symbol not in STOCKS:
+        raise ValueError(f"unknown stock {symbol!r}")
     started, session = time.time(), _fresh_session()
-    symbols = list(STOCKS) + [BENCHMARK]
+    prices = _download([symbol, BENCHMARK], session, period="2y")
+    if symbol not in prices:
+        raise RefreshError(f"Yahoo returned no prices for {symbol}. Check VPN/proxy and try again. Showing previously cached data.")
+    statements = _retry(_fetch_fundamentals, symbol, session)
+    with _connect() as conn:
+        _save_frames(conn, prices, "ohlcv", DAILY_FMT)
+        if statements is not None:
+            _save(conn, FUNDAMENTALS_KEY.format(symbol), statements)
+    failed = sorted({symbol, BENCHMARK} - set(prices)) + ([] if statements is not None else [f"{symbol} (fundamentals)"])
+    return RefreshResult(len(prices), failed, time.time() - started, int(statements is not None))
+
+
+def refresh_intraday(progress: Progress = _no_progress, symbols: list[str] | None = None) -> RefreshResult:
+    """5-minute bars for the last 5 sessions (all stocks + Nifty by default) in one batched call."""
+    started, session = time.time(), _fresh_session()
+    symbols = symbols or list(STOCKS) + [BENCHMARK]
     progress(0, 1, "intraday bars")
     frames = _download(symbols, session, period="5d", interval="5m")
     if not frames:
         raise RefreshError("Could not fetch intraday data from Yahoo Finance. Check VPN/proxy.")
     with _connect() as conn:
-        for symbol, frame in frames.items():
-            _save(conn, f"intraday:{symbol}", _serialize(frame, INTRADAY_FMT))
+        _save_frames(conn, frames, "intraday", INTRADAY_FMT)
     progress(1, 1, "intraday bars")
     return RefreshResult(len(frames), sorted(set(symbols) - set(frames)), time.time() - started)
 
@@ -277,6 +300,21 @@ def last_refresh() -> float | None:
 
 def last_intraday_refresh() -> float | None:
     return _latest("intraday:%")
+
+
+def symbol_fetched_at(symbol: str, kind: str = "ohlcv") -> float | None:
+    """When ONE stock's daily (`ohlcv`) or 5-minute (`intraday`) data was fetched: the honest per-stock freshness."""
+    with _connect() as conn:
+        row = conn.execute("SELECT fetched_at FROM cache WHERE key = ?", (f"{kind}:{symbol}",)).fetchone()
+    return row[0] if row else None
+
+
+def oldest_stock_refresh(kind: str = "ohlcv") -> float | None:
+    """The STALEST stock's fetch time. Re-analysing one stock moves last_refresh(), so only this can say 'everything is at least this fresh'."""
+    with _connect() as conn:
+        marks = ",".join("?" for _ in STOCKS)
+        return conn.execute(f"SELECT MIN(fetched_at) FROM cache WHERE key IN ({marks})",
+                            [f"{kind}:{s}" for s in STOCKS]).fetchone()[0]
 
 
 # ---------- long history (backtesting) ----------

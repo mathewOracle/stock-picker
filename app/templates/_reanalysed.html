@@ -1,0 +1,4 @@
+{% from "_rows.html" import swing_row, intraday_row %}
+{# Response to Re-analyse: the new detail panel, plus this stock's list row swapped in place (its score may have moved). #}
+{% include "_detail_" ~ tab ~ ".html" %}
+{% if tab == 'swing' %}{{ swing_row(row, r, true) }}{% else %}{{ intraday_row(row, r, 'long', true) }}{% endif %}

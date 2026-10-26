@@ -4,7 +4,7 @@
 {% block content %}
 {% set sn = r.snapshot %}
 <div class="flex flex-wrap justify-between gap-2">
-  <a href="/intraday" class="text-blue-800 underline">&larr; Back to intraday scanner</a>
+  <a href="/?tab=intraday&symbol={{ r.symbol | urlencode }}" class="text-blue-800 underline">&larr; Back to the order desk</a>
   <a href="/stock/{{ r.symbol }}" class="text-blue-800 underline">Swing / positional analysis of {{ r.name }} &rarr;</a>
 </div>
 

@@ -4,7 +4,7 @@
 {% block content %}
 {% set m = r.metrics %}
 <div class="flex flex-wrap justify-between gap-2">
-  <a href="/" class="text-blue-800 underline">&larr; Back to dashboard</a>
+  <a href="/?tab=swing&symbol={{ r.symbol | urlencode }}" class="text-blue-800 underline">&larr; Back to the order desk</a>
   {% if has_intraday %}<a href="/intraday/{{ r.symbol }}" class="text-blue-800 underline">Intraday view of {{ r.name }} &rarr;</a>{% endif %}
 </div>
 

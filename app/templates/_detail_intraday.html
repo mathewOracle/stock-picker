@@ -1,0 +1,58 @@
+{% from "_macros.html" import delta, intraday_badge, evidence_badge, trade_math_line, entry_exit_steps %}
+{% set sn = r.snapshot %}{% set buy = r.scores.bias %}
+<div data-symbol="{{ r.symbol }}">
+  <section aria-labelledby="sum-h" class="mb-4 rounded border border-slate-300 bg-white p-4">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 id="sum-h" class="text-xl font-bold">{{ r.name }} <span class="text-base font-normal text-slate-700">({{ r.symbol }})</span></h2>
+        <p class="text-sm text-slate-800"><strong>{{ sn.price | num(2) }}</strong> {{ delta(sn.change) }} today &middot; {{ r.sector }}
+          &middot; session {{ sn.session_date.strftime('%a %d %b') }}, last bar {{ sn.day.index[-1].strftime('%H:%M') }} IST
+          &middot; <a class="text-blue-800 underline" href="/intraday/{{ r.symbol }}">5-minute chart and key levels &rarr;</a></p>
+      </div>
+      <div class="ml-auto text-right">{{ intraday_badge(r.verdict) }}</div>
+    </div>
+    <dl class="mt-3 grid max-w-md grid-cols-2 gap-2 text-center text-sm">
+      <div class="rounded bg-green-50 p-2 ring-1 ring-green-700"><dt class="text-green-950">Buy intensity</dt><dd class="text-xl font-bold text-green-900">{{ buy | round | int }}</dd></div>
+      <div class="rounded bg-red-50 p-2 ring-1 ring-red-700"><dt class="text-red-950">Short intensity</dt><dd class="text-xl font-bold text-red-900">{{ (100 - buy) | round | int }}</dd></div>
+    </dl>
+    <p class="mt-2 text-xs text-slate-700">Intensity is the intraday bias score (70% today's tape, 30% context). A long needs bias &ge; {{ long_bias }}, a short needs &le; {{ short_bias }}.</p>
+    <p class="mt-2 text-sm"><strong>Verdict reason:</strong> {{ r.reason }}</p>
+    {% if r.issues %}<p class="mt-2 rounded border border-red-700 bg-red-50 p-2 text-sm text-red-900"><strong>Not tradeable today:</strong> {{ r.issues | join('; ') }}</p>{% endif %}
+    <div class="mt-3 border-t border-slate-200 pt-3">{% include "_reanalyse.html" %}</div>
+  </section>
+
+  <section aria-labelledby="setup-h" class="mb-4 rounded border border-slate-300 bg-white p-4">
+    <h3 id="setup-h" class="text-lg font-bold">Setups detected</h3>
+    {% for s in r.setups %}
+    <div class="mt-3 border-b border-slate-100 pb-3 last:border-0">
+      <p class="font-semibold">{{ s.side }}: {{ s.playbook.name }}{% if r.best and s == r.best %} <span class="text-xs text-green-800">(selected)</span>{% endif %}</p>
+      <p class="text-sm text-slate-800">{{ s.trigger }}</p>
+      <p class="mt-1">{{ evidence_badge(r.evidence[s.playbook.key ~ ':' ~ s.side]) }}</p>
+      <p>{{ trade_math_line(r.economics.get(s.playbook.key ~ ':' ~ s.side)) }}</p>
+      <dl class="mt-1 grid grid-cols-3 gap-2 text-sm sm:grid-cols-6">
+        <div><dt class="text-slate-700">Entry</dt><dd class="font-semibold">{{ s.plan.entry | num }}</dd></div>
+        <div><dt class="text-slate-700">Stop</dt><dd class="font-semibold text-red-800">{{ s.plan.stop | num }}</dd></div>
+        <div><dt class="text-slate-700">T1</dt><dd class="font-semibold text-green-800">{{ s.plan.target1 | num }}</dd></div>
+        <div><dt class="text-slate-700">T2</dt><dd class="font-semibold text-green-800">{{ s.plan.target2 | num }}</dd></div>
+        <div><dt class="text-slate-700">R:R</dt><dd class="font-semibold">{{ s.plan.reward_risk | num }}</dd></div>
+        <div><dt class="text-slate-700">Risk</dt><dd class="font-semibold">{{ s.plan.risk_pct | pct(false, 2) }}</dd></div>
+      </dl>
+      {% if r.best and s == r.best %}{{ entry_exit_steps(s) }}{% endif %}
+    </div>
+    {% else %}
+    <p class="mt-2 text-sm text-slate-800">No playbook setup is active on the latest bar. No trade is a perfectly good trade.</p>
+    {% endfor %}
+  </section>
+
+  <dl class="mb-4 grid grid-cols-2 gap-x-4 gap-y-1 rounded border border-slate-300 bg-white p-4 text-sm sm:grid-cols-3">
+    <div><dt class="text-slate-700">VWAP</dt><dd class="font-semibold">{{ sn.last.vwap | num }} ({{ delta(sn.price / sn.last.vwap - 1) }})</dd></div>
+    <div><dt class="text-slate-700">Relative volume</dt><dd class="font-semibold">{{ sn.rvol | num }}x</dd></div>
+    <div><dt class="text-slate-700">Opening range</dt><dd class="font-semibold">{% if sn.opening_range %}{{ sn.opening_range[1] | num }} - {{ sn.opening_range[0] | num }}{% else %}forming{% endif %}</dd></div>
+    <div><dt class="text-slate-700">Gap at open</dt><dd class="font-semibold">{{ delta(sn.gap) }}</dd></div>
+    <div><dt class="text-slate-700">Prev. day high / low</dt><dd class="font-semibold">{{ sn.pdh | num }} / {{ sn.pdl | num }}</dd></div>
+    <div><dt class="text-slate-700">CPR width</dt><dd class="font-semibold">{{ sn.pivots.cpr_width | pct(false, 2) }}</dd></div>
+  </dl>
+
+  {% include "_order_card.html" %}
+  {% include "_signals.html" %}
+</div>

@@ -1,0 +1,44 @@
+{% from "_macros.html" import badge, intraday_badge, delta %}
+{# One stock in the left-hand list. Filtering/sorting reads the data-* attributes in the browser (static/desk.js). #}
+
+{% macro swing_row(row, selected, oob=false) %}{% set r = row.r %}
+<li id="row-{{ r.symbol }}" {% if oob %}hx-swap-oob="true"{% endif %} class="border-b border-slate-200 last:border-0"
+    data-name="{{ (r.name ~ ' ' ~ r.symbol) | lower }}" data-verdict="{{ r.verdict }}" data-sector="{{ r.metrics.sector }}"
+    data-candidate="{{ 'yes' if row.candidate else 'no' }}" data-intensity="{{ row.intensity | round(1) }}" data-bar-default="{{ row.intensity | round(1) }}"
+    data-fund="{{ r.scores.fundamental | round(1) }}" data-tech="{{ r.scores.technical | round(1) }}" data-chart="{{ r.scores.chart | round(1) }}">
+  <button type="button" hx-get="/detail?tab=swing&amp;symbol={{ r.symbol | urlencode }}" hx-target="#detail" hx-push-url="/?tab=swing&amp;symbol={{ r.symbol | urlencode }}"
+          {% if selected and selected.symbol == r.symbol %}aria-current="true"{% endif %}
+          class="block w-full p-2.5 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-slate-900 aria-[current=true]:bg-blue-50 aria-[current=true]:ring-2 aria-[current=true]:ring-inset aria-[current=true]:ring-blue-800">
+    <span class="flex items-start justify-between gap-2">
+      <span><span class="block font-semibold">{{ r.name }}</span><span class="block text-xs text-slate-700">{{ r.symbol | replace('.NS', '') }} &middot; {{ r.metrics.sector }}</span></span>
+      {{ badge(r.verdict) }}
+    </span>
+    <span class="mt-1 flex items-center gap-2">
+      <span class="relative h-2 flex-1 rounded bg-slate-200" aria-hidden="true"><span data-bar class="absolute inset-y-0 left-0 rounded bg-slate-700" style="width: {{ row.intensity | round(1) }}%"></span></span>
+      <span class="w-8 text-right text-sm font-bold tabular-nums" title="Buy intensity (composite score)">{{ row.intensity | round | int }}</span>
+    </span>
+    <span class="mt-0.5 block text-xs text-slate-700">F {{ r.scores.fundamental | round | int }} &middot; T {{ r.scores.technical | round | int }} &middot; C {{ r.scores.chart | round | int }}
+      &middot; R:R {{ r.plan.reward_risk | num }}{% if row.candidate %} &middot; <strong class="text-blue-900">rules say Buy, not validated</strong>{% endif %}</span>
+  </button>
+</li>
+{% endmacro %}
+
+{% macro intraday_row(row, selected, rank, oob=false) %}{% set r = row.r %}{% set sn = r.snapshot %}
+<li id="row-{{ r.symbol }}" {% if oob %}hx-swap-oob="true"{% endif %} class="border-b border-slate-200 last:border-0"
+    data-name="{{ (r.name ~ ' ' ~ r.symbol) | lower }}" data-kind="{{ row.kind }}" data-lean="{{ row.lean }}"
+    data-buy="{{ row.buy | round(1) }}" data-short="{{ row.short | round(1) }}" data-bar-default="{{ row.buy | round(1) }}">
+  <button type="button" hx-get="/detail?tab=intraday&amp;symbol={{ r.symbol | urlencode }}" hx-target="#detail" hx-push-url="/?tab=intraday&amp;symbol={{ r.symbol | urlencode }}"
+          {% if selected and selected.symbol == r.symbol %}aria-current="true"{% endif %}
+          class="block w-full p-2.5 text-left hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-slate-900 aria-[current=true]:bg-blue-50 aria-[current=true]:ring-2 aria-[current=true]:ring-inset aria-[current=true]:ring-blue-800">
+    <span class="flex items-start justify-between gap-2">
+      <span><span class="block font-semibold">{{ r.name }}</span><span class="block text-xs text-slate-700">{{ sn.price | num(2) }} {{ delta(sn.change) }} today</span></span>
+      {{ intraday_badge(r.verdict) }}
+    </span>
+    <span class="mt-1 flex items-center gap-2">
+      <span class="relative h-2 flex-1 rounded bg-slate-200" aria-hidden="true"><span data-bar class="absolute inset-y-0 left-0 rounded {{ 'bg-red-700' if rank == 'short' else 'bg-green-700' }}" style="width: {{ (row.short if rank == 'short' else row.buy) | round(1) }}%"></span></span>
+      <span class="whitespace-nowrap text-xs tabular-nums"><span class="font-bold text-green-800">Buy {{ row.buy | round | int }}</span> &middot; <span class="font-bold text-red-800">Short {{ row.short | round | int }}</span></span>
+    </span>
+    <span class="mt-0.5 block truncate text-xs text-slate-700" title="{{ r.reason }}">{{ r.reason }}</span>
+  </button>
+</li>
+{% endmacro %}

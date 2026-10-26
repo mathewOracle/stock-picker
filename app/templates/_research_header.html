@@ -1,0 +1,10 @@
+{% from "_macros.html" import refresh_button %}
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+  <div>
+    <{{ h | default("h1") }} id="research-title" class="text-2xl font-bold">Research &amp; validation{% if scope %}: {{ scope | capitalize }}{% endif %}</{{ h | default("h1") }}>
+    <p class="text-sm text-slate-700">Evidence layer: nothing is called a Buy unless the backtest, news and (if proven useful) ML model back it.</p>
+  </div>
+  {{ refresh_button('research', 'Run research (backtest, news, model)') }}
+</div>
+<p class="mb-6 text-sm text-slate-700">Incremental: the 10-year backtest ledger and the news archive only add new dates (a few seconds to minutes after the first run). Previous results stay in place if a step fails.</p>
+

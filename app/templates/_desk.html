@@ -1,0 +1,29 @@
+{% from "_macros.html" import refresh_button %}
+{# Everything below the page title: tabs, toolbar and the active tab. Swapped as one unit when the tab changes. #}
+{% set has_data = stocks | length > 0 %}
+<nav aria-label="Trading style" class="mb-3 border-b border-slate-300">
+  <ul class="flex gap-1">
+    {% for key, label, blurb in [('swing', 'Swing & positional', 'hold days to weeks'), ('intraday', 'Intraday', 'in and out the same day')] %}
+    <li><a href="/?tab={{ key }}{% if selected %}&amp;symbol={{ selected.symbol | urlencode }}{% endif %}"
+           hx-get="/?tab={{ key }}{% if selected %}&amp;symbol={{ selected.symbol | urlencode }}{% endif %}" hx-target="#desk" hx-push-url="true"
+           {% if tab == key %}aria-current="page"{% endif %}
+           class="-mb-px block rounded-t border border-b-0 px-4 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-slate-900 {{ 'border-slate-300 bg-white text-slate-900' if tab == key else 'border-transparent text-slate-700 hover:bg-slate-100' }}">
+      {{ label }} <span class="hidden font-normal text-slate-700 sm:inline">&middot; {{ blurb }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-slate-700">
+    {% if tab == 'swing' %}Oldest price data fetched {{ oldest | timestamp }}{% else %}Oldest 5-minute data fetched {{ oldest | timestamp }}{% endif %}
+    {% if has_data %}&middot; {{ stocks | length }} stocks{% if tab == 'swing' %}, best buy intensity first{% endif %}{% endif %}</p>
+  <div class="flex flex-wrap items-center gap-2">
+    {{ refresh_button('daily' if tab == 'swing' else 'intraday',
+                      ('Refresh swing data' if has_data else 'Fetch market data') if tab == 'swing' else ('Refresh intraday data' if has_data else 'Fetch intraday data')) }}
+    <button type="button" hx-get="/research/{{ tab }}" hx-target="#research-body"
+            class="rounded border border-slate-700 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900">Research &amp; validation</button>
+    <a href="{{ '/market' if tab == 'swing' else '/intraday' }}" class="rounded px-2 py-1.5 text-sm text-blue-800 underline">{{ 'Market overview' if tab == 'swing' else 'Scanner and playbook' }}</a>
+  </div>
+</div>
+
+{% include "_desk_" ~ tab ~ ".html" %}

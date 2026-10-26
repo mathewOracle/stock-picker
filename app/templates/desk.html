@@ -2,34 +2,28 @@
 {% from "_macros.html" import sizer_form %}
 {% block title %}Order desk - India Stock Picker{% endblock %}
 {% block content %}
-<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-  <div class="max-w-3xl">
-    <h1 class="text-2xl font-bold">Order desk</h1>
-    <p class="text-sm text-slate-800">Every signal behind a stock's verdict, what the backtest says about each one, and an order ticket.
-      Orders here are a <strong>dry run</strong>: the exact Angel One requests are written to a local journal, and <strong>nothing is sent to a broker</strong>.</p>
-  </div>
-  <label class="text-sm font-semibold">Stock
-    <select name="symbol" hx-get="/desk" hx-target="#desk-panel" hx-push-url="true"
-            class="ml-1 rounded border border-slate-500 bg-white p-1.5 font-normal focus:outline-none focus:ring-2 focus:ring-slate-900">
-      {% for symbol, name, verdict in stocks %}
-      <option value="{{ symbol }}" {% if symbol == r.symbol %}selected{% endif %}>{{ name }} ({{ symbol | replace('.NS', '') }}) - {{ verdict }}</option>
-      {% endfor %}
-    </select>
-  </label>
+<div class="mb-3">
+  <h1 class="text-2xl font-bold">Order desk</h1>
+  <p class="max-w-3xl text-sm text-slate-800">Pick a stock, see every signal behind its verdict and what the backtest says about it, then review an order ticket.
+    Orders are a <strong>dry run</strong>: the exact Angel One requests are written to a local journal, and <strong>nothing is sent to a broker</strong>.</p>
 </div>
+
+<div id="desk">{% include "_desk.html" %}</div>
 
 <section aria-labelledby="size-h" class="mb-4 rounded border border-slate-300 bg-white p-3">
   <h2 id="size-h" class="mb-2 text-sm font-bold">Position size</h2>
   {{ sizer_form() }}
-  <p class="mt-1 text-xs text-slate-700">Risk is capped at 1% per trade when an order is built, whatever is typed here. No leverage is assumed.</p>
+  <p class="mt-1 text-xs text-slate-700">Used for the suggested quantity on every order card. Risk is capped at 1% per trade when an order is built, whatever is typed here. No leverage is assumed.</p>
 </section>
 
-<p id="desk-status" role="status" class="sr-only"></p>
-<div id="desk-panel">{% include "_desk_panel.html" %}</div>
+{% include "_journal.html" %}
 
-<dialog id="ticket-dialog" aria-labelledby="ticket-title"
-        class="w-full max-w-2xl rounded-lg border border-slate-400 p-0 shadow-xl backdrop:bg-slate-900/60">
+<dialog id="ticket-dialog" aria-labelledby="ticket-title" class="w-full max-w-2xl rounded-lg border border-slate-400 p-0 shadow-xl backdrop:bg-slate-900/60">
   <div id="ticket-body" class="p-5"></div>
 </dialog>
+<dialog id="research-dialog" aria-labelledby="research-title" class="max-h-[90vh] w-full max-w-5xl rounded-lg border border-slate-400 p-0 shadow-xl backdrop:bg-slate-900/60">
+  <div id="research-body" class="p-5"></div>
+</dialog>
+<p id="desk-status" role="status" class="sr-only"></p>
 <script src="/static/desk.js" defer></script>
 {% endblock %}

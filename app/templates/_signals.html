@@ -1,0 +1,48 @@
+{% from "_macros.html" import tone_label %}
+{# Every signal behind a verdict, filterable in the browser. Needs: signals (rows), pillars (names), tab. #}
+<section aria-labelledby="sig-h" class="mb-4 rounded border border-slate-300 bg-white p-4">
+  <h3 id="sig-h" class="text-lg font-bold">Signals</h3>
+  <p class="text-sm text-slate-800">Open a row for what it means{% if tab == 'swing' %} and how that signal has actually performed{% endif %}.</p>
+  <div class="my-3 flex flex-wrap items-end gap-4 text-sm">
+    <label class="font-semibold">Search
+      <input type="search" data-target="#signal-list" data-search placeholder="e.g. RSI" class="ml-1 w-36 rounded border border-slate-500 p-1 font-normal"></label>
+    <label class="font-semibold">Sort
+      <select data-target="#signal-list" data-sort class="ml-1 rounded border border-slate-500 bg-white p-1 font-normal">
+        <option value="+order">Pillar order</option><option value="-absimpact">Biggest impact</option><option value="-weight">Highest weight</option>
+      </select></label>
+    {% for key, legend, options in [('tone', 'Signal', ['all', 'bullish', 'neutral', 'bearish']), ('pillar', 'Pillar', ['all'] + (pillars | list))] %}
+    <div role="group" aria-label="{{ legend }}" class="flex flex-wrap items-center gap-1">
+      <span class="font-semibold">{{ legend }}</span>
+      {% for option in options %}
+      <button type="button" data-target="#signal-list" data-filter="{{ key }}" data-value="{{ option }}" aria-pressed="{{ 'true' if option == 'all' else 'false' }}"
+              class="rounded border border-slate-500 px-2 py-0.5 capitalize hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white focus:outline-none focus:ring-2 focus:ring-slate-900">{{ option }}</button>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <p data-count-for="#signal-list" role="status" class="mb-2 text-xs text-slate-700"></p>
+  <div id="signal-list" data-default-sort="+order" class="space-y-1">
+    {% for row in signals %}{% set s = row.s %}
+    <details data-pillar="{{ row.pillar }}" data-tone="{{ s.tone if s.weight else 'neutral' }}" data-name="{{ s.name | lower }}" data-order="{{ loop.index }}"
+             data-impact="{{ s.impact }}" data-absimpact="{{ s.impact | abs }}" data-weight="{{ s.weight }}" class="rounded border border-slate-200 bg-slate-50 open:bg-white">
+      <summary class="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 p-2 focus:outline-none focus:ring-2 focus:ring-slate-900">
+        <span class="w-52 font-semibold">{{ s.name }}</span>
+        <span class="min-w-[9rem] flex-1">{{ s.reading }}</span>
+        <span class="w-20">{{ tone_label(s.tone) if s.weight else 'Info' }}</span>
+        <span class="flex w-36 items-center gap-2" title="Points {{ '%+.2f' | format(s.points) }} x weight {{ s.weight }}">
+          <span class="relative h-2 w-20 rounded bg-slate-200" aria-hidden="true">
+            <span class="absolute top-0 h-2 rounded {{ 'bg-green-700 left-1/2' if s.points >= 0 else 'bg-red-700 right-1/2' }}" style="width: {{ (s.points | abs) * 50 }}%"></span></span>
+          <span class="text-xs tabular-nums">{{ '%+.2f' | format(s.impact) }}</span>
+        </span>
+        <span class="text-xs text-slate-700">{{ row.pillar }}</span>
+      </summary>
+      <div class="space-y-1 border-t border-slate-200 p-3 text-sm">
+        <p>{{ s.note }}</p>
+        <p class="text-slate-800">Weight <strong>{{ s.weight }}</strong>, points <strong>{{ '%+.2f' | format(s.points) }}</strong> (range -1 to +1), contribution <strong>{{ '%+.2f' | format(s.impact) }}</strong>.</p>
+        <p class="{{ 'text-green-800' if row.record and row.record.status == 'edge' else 'text-red-800' if row.record and row.record.status == 'wrong way' else 'text-slate-800' }}">
+          <strong>Track record:</strong> {{ row.evidence }}</p>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</section>

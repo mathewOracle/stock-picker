@@ -5,7 +5,7 @@ the way the backtest traded it. Only order placement is covered here: no data, a
 other code. *What* to trade still comes only from this app's validated verdicts.
 
 **Status:** the parameters are implemented as pure functions in `app/broker/angelone.py`, pinned by
-`tests/test_broker_angelone.py`. **Nothing sends an order yet.** The `/desk` page records these exact tickets to a local dry-run journal (`app/broker/desk.py`), which is the rehearsal step before any live sending. A live executor is a separate, deliberate step
+`tests/test_broker_angelone.py`. **Nothing sends an order yet.** The order desk (`/`) records these exact tickets to a local dry-run journal (`app/broker/desk.py`), which is the rehearsal step before any live sending. A live executor is a separate, deliberate step
 (see §6). Today no swing Buy and no intraday setup passes validation, so every ticket would be refused anyway.
 
 ## Commands

@@ -1,4 +1,4 @@
-"""FastAPI app: swing dashboard, stock deep-dive, intraday scanner, and background refresh jobs."""
+"""FastAPI app: the order desk (home), market overview, stock deep-dives, intraday scanner, research and refresh jobs."""
 
 import math
 from datetime import datetime
@@ -7,11 +7,11 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import analysis, data
+from app import analysis, data, deskview
 from app.broker import desk
 from app.intraday import analysis as intraday
 from app.intraday import archive as intraday_archive
@@ -19,7 +19,7 @@ from app.intraday.checks import MIN_ATR_PCT, MIN_TRADED_VALUE_CR
 from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF
 from app.intraday.setups import PLAYBOOKS
 from app.jobs import RefreshJob
-from app.research import pipeline, signal_record
+from app.research import pipeline
 from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.research.ml import PROBA_GATE
 from app.scoring import BUY_LEVELS, GATES, PILLAR_WEIGHTS, VERDICTS, WATCHLIST
@@ -61,12 +61,13 @@ def timestamp(value) -> str:
 templates.env.filters.update(pct=pct, num=num, pe=pe, crore=crore, timestamp=timestamp,
                               evidence_note=intraday.describe_evidence)
 templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}",
-                             swing_max_hold=SWING_MAX_HOLD)  # the swing backtest's time exit, in sessions
+                             swing_max_hold=SWING_MAX_HOLD,  # the swing backtest's time exit, in sessions
+                             long_bias=intraday.LONG_BIAS, short_bias=intraday.SHORT_BIAS)
 
 
-# ---------- swing / positional ----------
+# ---------- market overview (the old swing dashboard) ----------
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/market", response_class=HTMLResponse)
 def dashboard(request: Request):
     result = analysis.build()
     ctx = {
@@ -121,93 +122,116 @@ def intraday_stock(request: Request, symbol: str):
     return templates.TemplateResponse(request, "intraday_stock.html", ctx)
 
 
-# ---------- order desk: every signal for one stock, plus a (dry-run) order ticket ----------
+# ---------- order desk: the home page ----------
 
-DESK_CAPITAL, DESK_RISK = 100_000, 1.0   # the sizer's defaults; the browser can change them per request
 Mode = Literal["swing", "intraday"]
+Rank = Literal["long", "short"]
 
 
-def _desk_report(symbol: str, mode: Mode):
-    report = (analysis.build() if mode == "swing" else intraday.build()).get(symbol)
-    if report is None:
-        raise HTTPException(404, f"No {mode} analysis for {symbol}: refresh the data first")
-    return report
+def _is_partial(request: Request) -> bool:
+    """HTMX swaps get a fragment; a full page load (or history restore) gets the whole page."""
+    return bool(request.headers.get("HX-Request")) and not request.headers.get("HX-History-Restore-Request")
 
 
-def _draft(symbol: str, mode: Mode, capital: float, risk: float, qty: int | None) -> desk.Draft:
-    report = _desk_report(symbol, mode)
-    ref = desk.swing_reference(symbol) if mode == "swing" else desk.intraday_reference(report)
-    return desk.build_draft(mode, symbol, report, ref, capital, risk, qty)
+def _require_htmx(request: Request) -> None:
+    if not request.headers.get("HX-Request"):   # a cross-site form cannot set this header
+        raise HTTPException(403, "This action only works from the order desk page")
 
 
-def _signal_rows(report) -> list[dict]:
-    records = signal_record.records()
-    return [{"s": s, "pillar": label, "record": records.get(s.name), "evidence": signal_record.describe(records.get(s.name))}
-            for label, _, signals in report.pillars for s in signals]
+@app.get("/", response_class=HTMLResponse)
+def desk_page(request: Request, tab: Mode = "swing", symbol: str = "", rank: Rank = "long"):
+    try:
+        ctx = deskview.page_context(tab, symbol, rank)
+    except deskview.UnknownSymbol:
+        raise HTTPException(404, f"Unknown symbol {symbol}")
+    return templates.TemplateResponse(request, "_desk.html" if _is_partial(request) else "desk.html", {**ctx, "nav": "desk"})
 
 
-def _order_cards(symbol: str, report) -> list[dict]:
-    cards = [{"mode": "swing", "title": f"Swing order (delivery, up to {SWING_MAX_HOLD} sessions)", "verdict": report.verdict,
-              "draft": _draft(symbol, "swing", DESK_CAPITAL, DESK_RISK, None), "plan": report.plan, "why": report.blockers}]
-    live = intraday.build().get(symbol)
-    if live is not None:
-        plan = live.best.plan if live.best else None
-        cards.append({"mode": "intraday", "title": "Intraday order (same day, flat by " + f"{SQUARE_OFF:%H:%M})",
-                      "verdict": live.verdict, "draft": _draft(symbol, "intraday", DESK_CAPITAL, DESK_RISK, None),
-                      "plan": plan, "why": [live.reason]})
-    return cards
+@app.get("/desk")
+def desk_legacy(request: Request):
+    """The order desk used to live at /desk; keep old links working."""
+    return RedirectResponse("/?" + request.url.query if request.url.query else "/", status_code=307)
 
 
-@app.get("/desk", response_class=HTMLResponse)
-def desk_page(request: Request, symbol: str = ""):
-    result = analysis.build()
-    report = result.get(symbol) if symbol else (result.reports[0] if result.reports else None)
-    if report is None:
-        raise HTTPException(404, "Unknown symbol, or no data yet - hit Refresh on the dashboard")
-    rows = _signal_rows(report)
-    proven = sum(1 for row in rows if row["record"] and row["record"]["status"] == "edge")
-    tested = sum(1 for row in rows if row["record"] and row["record"]["status"] != "insufficient")
-    ctx = {"r": report, "rows": rows, "proven": proven, "tested": tested, "cards": _order_cards(report.symbol, report),
-           "orders": desk.recent_orders(), "nav": "desk", "bar": signal_record.bar(),
-           "stocks": [(r.symbol, r.name, r.verdict) for r in result.reports], "capital": DESK_CAPITAL, "risk": DESK_RISK}
-    partial = request.headers.get("HX-Request") and not request.headers.get("HX-History-Restore-Request")
-    return templates.TemplateResponse(request, "_desk_panel.html" if partial else "desk.html", ctx)
+def _detail(request: Request, tab: Mode, symbol: str, notice: dict | None = None, template: str | None = None):
+    try:
+        report = deskview.report_for(symbol, tab)
+    except deskview.NoAnalysis as exc:
+        raise HTTPException(404, str(exc))
+    ctx = {**deskview.detail_context(tab, report), "notice": notice}
+    if template:   # a re-analysis also refreshes the stock's row in the list (out-of-band)
+        ctx["row"] = deskview.row_for(tab, symbol)
+    return templates.TemplateResponse(request, template or f"_detail_{tab}.html", ctx)
+
+
+@app.get("/detail", response_class=HTMLResponse)
+def desk_detail(request: Request, tab: Mode, symbol: str):
+    return _detail(request, tab, symbol)
+
+
+@app.post("/reanalyse", response_class=HTMLResponse)
+def desk_reanalyse(request: Request, tab: Mode, symbol: str):
+    """Re-download one stock's data and recompute it. Failures keep the old data and say so (200: htmx won't swap a 4xx)."""
+    _require_htmx(request)
+    if symbol not in STOCKS:
+        raise HTTPException(404, f"Unknown symbol {symbol}")
+    refresh = data.refresh_symbol if tab == "swing" else intraday_archive.refresh_symbol
+    try:
+        refresh(symbol)
+        notice = {"ok": True, "text": f"Re-analysed {STOCKS[symbol]} at {datetime.now():%H:%M}: fresh data downloaded and every signal recomputed."}
+    except Exception as exc:   # Yahoo fails in many ways; whatever happened, the cache is untouched
+        notice = {"ok": False, "text": f"Re-analysis failed: {exc or type(exc).__name__}. Showing the previous data."}
+    return _detail(request, tab, symbol, notice, template="_reanalysed.html")
 
 
 @app.get("/desk/ticket", response_class=HTMLResponse)
-def desk_ticket(request: Request, symbol: str, mode: Mode, capital: float = DESK_CAPITAL, risk: float = DESK_RISK,
+def desk_ticket(request: Request, symbol: str, mode: Mode, capital: float = deskview.DESK_CAPITAL, risk: float = deskview.DESK_RISK,
                 qty: int | None = None):
-    draft = _draft(symbol, mode, capital, risk, qty)
+    try:
+        draft = deskview.draft(symbol, mode, capital, risk, qty)
+    except deskview.NoAnalysis as exc:
+        raise HTTPException(404, str(exc))
     return templates.TemplateResponse(request, "_ticket.html", {"d": draft, "capital": capital})
 
 
 @app.post("/desk/order", response_class=HTMLResponse)
-def desk_order(request: Request, symbol: str, mode: Mode, capital: float = DESK_CAPITAL, risk: float = DESK_RISK,
+def desk_order(request: Request, symbol: str, mode: Mode, capital: float = deskview.DESK_CAPITAL, risk: float = deskview.DESK_RISK,
                qty: int | None = None):
-    if not request.headers.get("HX-Request"):   # a cross-site form cannot set this header
-        raise HTTPException(403, "Orders can only be recorded from the desk page")
+    _require_htmx(request)
     ctx = {"orders": None, "row": None, "error": ""}
     try:
-        ctx["row"] = desk.record(_draft(symbol, mode, capital, risk, qty), datetime.now())
+        ctx["row"] = desk.record(deskview.draft(symbol, mode, capital, risk, qty), datetime.now())
+    except deskview.NoAnalysis as exc:
+        raise HTTPException(404, str(exc))
     except desk.OrderRefused as exc:   # 200 on purpose: htmx does not swap 4xx responses
         ctx["error"] = str(exc)
     ctx["orders"] = desk.recent_orders()
+    ctx["card"] = deskview.order_card(symbol, mode, deskview.report_for(symbol, mode))   # the card flips to "already recorded" in place
     return templates.TemplateResponse(request, "_order_result.html", ctx)
 
 
 # ---------- research & validation ----------
 
-@app.get("/research", response_class=HTMLResponse)
-def research_page(request: Request):
+def _research_context() -> dict:
     news = data.load_result("news") or {}
     scored = sorted(((s, v) for s, v in news.get("stocks", {}).items() if v["status"] == "ok"),
                     key=lambda item: item[1]["score"])
-    ctx = {"nav": "research", "bt": data.load_result("backtest"), "news": news, "ml": data.load_result("model"),
-           "study": data.load_result("sentiment_study"), "ib": data.load_result("intraday_backtest"),
-           "fw": data.load_result("forward"),
-           "ml_note": analysis.build().ml_note, "names": STOCKS, "proba_gate": PROBA_GATE,
-           "news_low": scored[:5], "news_high": scored[::-1][:5]}
-    return templates.TemplateResponse(request, "research.html", ctx)
+    return {"bt": data.load_result("backtest"), "news": news, "ml": data.load_result("model"),
+            "study": data.load_result("sentiment_study"), "ib": data.load_result("intraday_backtest"),
+            "fw": data.load_result("forward"),
+            "ml_note": analysis.build().ml_note, "names": STOCKS, "proba_gate": PROBA_GATE,
+            "news_low": scored[:5], "news_high": scored[::-1][:5]}
+
+
+@app.get("/research", response_class=HTMLResponse)
+def research_page(request: Request):
+    return templates.TemplateResponse(request, "research.html", {**_research_context(), "nav": "research"})
+
+
+@app.get("/research/{scope}", response_class=HTMLResponse)
+def research_panel(request: Request, scope: Mode):
+    """The evidence for ONE side of the desk (swing or intraday), shown in a panel on that tab."""
+    return templates.TemplateResponse(request, "_research_drawer.html", {**_research_context(), "scope": scope})
 
 
 # ---------- background refresh jobs ----------

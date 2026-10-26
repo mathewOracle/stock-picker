@@ -1,0 +1,33 @@
+{% macro stats_row(label, b) %}
+<tr class="border-t border-slate-200">
+  <th scope="row" class="p-2 font-medium">{{ label }}</th>
+  {% if b.n %}
+  <td class="p-2">{{ b.n }}</td><td class="p-2">{{ b.win_rate | pct(false, 0) }}</td>
+  <td class="p-2">{{ b.avg_return | pct(true, 2) }}</td><td class="p-2">{{ b.control_return | pct(true, 2) }}</td>
+  <td class="p-2 font-semibold">{{ b.edge | pct(true, 2) }}</td><td class="p-2">{{ b.t_stat | num(2) }}</td>
+  <td class="p-2">{{ b.expectancy_r | num(2) }}</td><td class="p-2">{{ b.profit_factor | num(2) if b.profit_factor else '–' }}</td>
+  {% else %}<td class="p-2" colspan="8">no trades</td>{% endif %}
+</tr>
+{% endmacro %}
+
+{% macro stats_head(first_col) %}
+<thead class="bg-slate-100"><tr>
+  <th scope="col" class="p-2">{{ first_col }}</th><th scope="col" class="p-2">Trades</th><th scope="col" class="p-2">Win rate</th>
+  <th scope="col" class="p-2">Avg return</th><th scope="col" class="p-2"><abbr title="Average return of ALL evaluations, signal or not">Control</abbr></th>
+  <th scope="col" class="p-2"><abbr title="Average return minus control">Edge</abbr></th><th scope="col" class="p-2"><abbr title="Edge divided by its standard error. 1.65 = 95% confident (one-sided)">t-stat</abbr></th>
+  <th scope="col" class="p-2"><abbr title="Average profit in units of the risk taken">Exp. R</abbr></th><th scope="col" class="p-2"><abbr title="Gross profit divided by gross loss">Profit factor</abbr></th>
+</tr></thead>
+{% endmacro %}
+
+{% macro filter_row(label, b) %}
+{% if b and b.rule %}
+<tr class="border-t border-slate-200">
+  <th scope="row" class="p-2 font-medium">{{ label }}</th>
+  <td class="p-2">{{ b.rule.n }}</td><td class="p-2">{{ b.rule.avg_return | pct(true, 2) }}</td><td class="p-2">{{ b.rule.t_stat | num(2) }}</td>
+  <td class="p-2">{{ b.filtered.n }}</td><td class="p-2">{{ b.filtered.avg_return | pct(true, 2) }}</td>
+  <td class="p-2 font-semibold">{{ b.filtered.edge | pct(true, 2) }}</td><td class="p-2">{{ b.filtered.t_stat | num(2) }}</td>
+  <td class="p-2">{{ b.folds_positive | pct(false, 0) }} of {{ b.folds_rated }}</td>
+</tr>
+{% endif %}
+{% endmacro %}
+

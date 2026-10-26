@@ -1,0 +1,50 @@
+{% from "_rows.html" import swing_row %}
+{% set tones = {'red': 'border-red-700 bg-red-50', 'amber': 'border-amber-600 bg-amber-50', 'green': 'border-green-700 bg-green-50', 'slate': 'border-slate-400 bg-slate-100'} %}
+{% set bt = a.backtest %}
+<div class="mb-4 grid gap-2 md:grid-cols-2">
+  <p class="rounded border-l-4 p-3 text-sm {{ tones[a.regime.tone] }}"><strong>Market regime: {{ a.regime.label }}.</strong> {{ a.regime.detail }}
+    {% if a.breadth_200dma is not none %}Breadth: {{ (a.breadth_200dma * 100) | round | int }}% of stocks are above their 200-day average.{% endif %}</p>
+  <p class="rounded border-l-4 p-3 text-sm {{ 'border-green-700 bg-green-50' if bt and bt.passed else 'border-amber-600 bg-amber-50' }}">
+    <strong>Validation: {{ 'rules passed the backtest' if bt and bt.passed else ('rules have NOT been validated' if bt else 'backtest not run yet') }}.</strong>
+    {% if bt %}Edge vs random entries {{ bt.universe.buy.edge | pct }} (t {{ bt.universe.buy.t_stat | num(2) }}, 1.65 needed).{% endif %}
+    {% if not (bt and bt.passed) %}A Buy-rated stock is shown as Watchlist until the evidence supports it.{% endif %}</p>
+</div>
+
+{% if not has_data %}
+<p class="rounded border border-slate-300 bg-white p-8 text-center text-slate-800">No daily data yet. Use <strong>Fetch market data</strong> above (about 30-60 seconds).</p>
+{% else %}
+<div class="grid gap-4 lg:grid-cols-[23rem_minmax(0,1fr)]">
+  <section aria-labelledby="list-h" class="min-w-0">
+    <h2 id="list-h" class="mb-2 text-lg font-bold">Stocks by buy intensity</h2>
+    <div class="mb-2 space-y-2 rounded border border-slate-300 bg-white p-3 text-sm">
+      <label class="block font-semibold">Search
+        <input type="search" data-target="#swing-list" data-search placeholder="name or symbol" class="mt-0.5 block w-full rounded border border-slate-500 p-1 font-normal"></label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="font-semibold">Sort
+          <select data-target="#swing-list" data-sort class="mt-0.5 block w-full rounded border border-slate-500 bg-white p-1 font-normal">
+            <option value="-intensity">Buy intensity</option><option value="-fund">Fundamental</option><option value="-tech">Technical</option>
+            <option value="-chart">Chart</option><option value="+name">Name</option></select></label>
+        <label class="font-semibold">Sector
+          <select data-target="#swing-list" data-filter="sector" class="mt-0.5 block w-full rounded border border-slate-500 bg-white p-1 font-normal">
+            <option value="all">All</option>{% for s in sectors %}<option>{{ s }}</option>{% endfor %}</select></label>
+      </div>
+      {% for key, legend, options in [('verdict', 'Verdict', ['all', 'Strong Buy', 'Buy', 'Watchlist', 'Hold', 'Avoid']), ('candidate', 'Rules say Buy', ['all', 'yes'])] %}
+      <div role="group" aria-label="{{ legend }}" class="flex flex-wrap items-center gap-1">
+        <span class="font-semibold">{{ legend }}</span>
+        {% for option in options %}
+        <button type="button" data-target="#swing-list" data-filter="{{ key }}" data-value="{{ option }}" aria-pressed="{{ 'true' if option == 'all' else 'false' }}"
+                class="rounded border border-slate-500 px-2 py-0.5 hover:bg-slate-100 aria-pressed:bg-slate-900 aria-pressed:text-white focus:outline-none focus:ring-2 focus:ring-slate-900">{{ 'unvalidated only' if option == 'yes' else option }}</button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <details class="text-xs text-slate-700"><summary class="cursor-pointer font-semibold focus:outline-none focus:ring-2 focus:ring-slate-900">What does "Rules say Buy" mean?</summary>
+        <p class="mt-1">It passes the price and fundamental gates, but the backtest/news check does not back it, so it is held at Watchlist.</p></details>
+      <p data-count-for="#swing-list" role="status" class="text-xs text-slate-700"></p>
+    </div>
+    <ul id="swing-list" data-default-sort="-intensity" aria-label="Stocks ranked by buy intensity" class="max-h-[70vh] overflow-y-auto rounded border border-slate-300 bg-white">
+      {% for row in stocks %}{{ swing_row(row, selected) }}{% endfor %}
+    </ul>
+  </section>
+  <div id="detail" class="min-w-0">{% include "_detail_swing.html" %}</div>
+</div>
+{% endif %}

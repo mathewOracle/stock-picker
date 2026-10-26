@@ -88,11 +88,25 @@ CSS is committed so running the app does not).
 Verdict = playbook setup + bias agreement (long >= 55, short <= 45; fades exempt) + R:R >= 1.5 +
 tradeable (liquid, >= 1% ATR, not results day) + time rules (wait until 09:30, no entries after 14:45).
 
-## Order desk (`/desk`)
+## Order desk (`/`, the home page)
 
-One page per stock: every swing signal (fundamental, technical, chart) as a filterable, sortable, searchable list; each row
-opens to what it means and its **track record** (`research/signal_record.py`: rank correlation with the next 20 days' return,
-thinned t-statistic, Bonferroni-corrected bar). Below it, a **Place an order** card for swing and intraday.
+Two tabs, **Swing & positional** and **Intraday**, each with the same layout: a ranked stock list on the left, the selected stock
+on the right. The URL keeps the tab and stock (`/?tab=intraday&symbol=TCS.NS`), so links and the Back button work.
+
+* **Ranking.** Swing lists stocks by *buy intensity* (the composite score). Intraday ranks by *buy intensity* (the intraday bias,
+  0-100) or *short intensity* (100 - bias), and filters by setup / candidate / wait / no trade and by long- or short-leaning.
+  The intraday bias is the app's existing score, not a new predictor. A stock that passes the rules but not the backtest is
+  flagged "rules say Buy, not validated" (swing filter: *unvalidated only*).
+* **Refresh** (top of each tab) re-downloads that tab's data for every stock. **Re-analyse** (on a stock) re-downloads just that
+  stock and recomputes it; the page shows when *that stock's* data was fetched, so one refresh never makes the whole universe look
+  fresh. A failed refresh keeps the old data and says so.
+* **Research & validation** is a button on each tab and opens only that side's evidence (swing: backtest, news, ML, forward test;
+  intraday: setup backtest). `/research` still shows everything. `/market` is the old market overview; `/desk` redirects here.
+* Every signal behind a verdict is a filterable, sortable, searchable list; each row opens to what it means and its **track record**
+  (`research/signal_record.py`: rank correlation with the next 20 days' return, thinned t-statistic, Bonferroni-corrected bar).
+  Intraday signals are not scored one by one; the playbook setups are backtested as a whole.
+* The ranking and filtering rules live in `app/deskview.py` (no HTML) and the filtering in the browser is `static/desk.js`.
+* A **Place an order** card sits under each stock's summary.
 
 * The button only enables for a validated Buy / backtest-supported setup; otherwise it says why not. It never overrides the verdict.
 * It opens a ticket (side, product, quantity, entry limit, stop, T1, most you lose, time exit, exact Angel One request bodies).

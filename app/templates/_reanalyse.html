@@ -1,0 +1,10 @@
+{# Re-analyse ONE stock: re-download its data and recompute. Needs: tab, r, fetched, notice (optional). #}
+<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+  <button type="button" hx-post="/reanalyse?tab={{ tab }}&amp;symbol={{ r.symbol | urlencode }}" hx-target="#detail" hx-disabled-elt="this" hx-indicator="#reanalyse-wait"
+          class="rounded bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-900 disabled:opacity-60">Re-analyse {{ r.name }}</button>
+  <span id="reanalyse-wait" class="htmx-indicator text-sm font-semibold" role="status">Re-downloading&hellip;</span>
+  <span class="text-xs text-slate-700">{{ 'Daily prices and statements' if tab == 'swing' else '5-minute bars' }} fetched {{ fetched | timestamp }}</span>
+</div>
+{% if notice %}
+<p role="{{ 'status' if notice.ok else 'alert' }}" class="mt-2 rounded border p-2 text-sm {{ 'border-green-700 bg-green-50 text-green-950' if notice.ok else 'border-red-700 bg-red-50 text-red-950' }}">{{ notice.text }}</p>
+{% endif %}

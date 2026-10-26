@@ -138,13 +138,23 @@ def recent_orders(limit: int = 10) -> list[dict]:
     return _read_journal()[::-1][:limit]
 
 
+def _key(mode: str, symbol: str, now: datetime) -> str:
+    return f"{mode}:{symbol}:{now:%Y-%m-%d}"
+
+
+def recorded_today(mode: str, symbol: str, now: datetime) -> dict | None:
+    """The journal row if this mode/symbol already has an order today (one per day, by design)."""
+    key = _key(mode, symbol, now)
+    return next((row for row in _read_journal() if row["key"] == key), None)
+
+
 def record(draft: Draft, now: datetime) -> dict:
     """Append the ticket to the journal (dry run). One order per mode, symbol and day: never a silent duplicate."""
     if not draft.can_place:
         raise OrderRefused(draft.ticket.skip or "nothing to place")
-    key = f"{draft.mode}:{draft.symbol}:{now:%Y-%m-%d}"
+    key = _key(draft.mode, draft.symbol, now)
     existing = _read_journal()
-    if any(row["key"] == key for row in existing):
+    if recorded_today(draft.mode, draft.symbol, now):
         raise OrderRefused(f"A {draft.mode} order for {draft.symbol} is already recorded today. "
                            "The desk never repeats an order: check the journal first.")
     row = {"id": len(existing) + 1, "key": key, "at": now.isoformat(timespec="seconds"), "dry_run": True,

@@ -1,0 +1,32 @@
+{% from "_macros.html" import badge, intraday_badge %}
+{# Order card for the active tab. `c` is deskview.order_card(); the ticket dialog is opened by the button. #}
+{% set c = card %}{% set d = c.draft %}
+<section id="order-card" {% if oob %}hx-swap-oob="true"{% endif %} aria-labelledby="ord-h" class="mb-4">
+  <h3 id="ord-h" class="mb-2 text-lg font-bold">Place an order</h3>
+  <article data-entry="{{ d.ref_price }}" data-stop="{{ d.stop }}" class="rounded border border-slate-300 bg-white p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h4 class="font-bold">{{ c.title }}</h4>
+      {{ intraday_badge(c.verdict) if c.mode == 'intraday' else badge(c.verdict) }}
+    </div>
+    <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-sm sm:grid-cols-4">
+      <div><dt class="text-slate-700">Reference price</dt><dd class="font-semibold">{{ d.ref_price | num(2) }}</dd><dd class="text-xs text-slate-700">{{ d.ref_label }}</dd></div>
+      {% if c.plan %}
+      <div><dt class="text-slate-700">Stop</dt><dd class="font-semibold text-red-800">{{ c.plan.stop | num(2) }}</dd></div>
+      <div><dt class="text-slate-700">Target (T1)</dt><dd class="font-semibold text-green-800">{{ c.plan.target1 | num(2) }}</dd></div>
+      {% endif %}
+      <div><dt class="text-slate-700">Suggested quantity</dt><dd class="font-semibold" data-qty>-</dd></div>
+    </dl>
+    {% if c.recorded %}
+    <p class="mt-3 rounded border border-green-700 bg-green-50 p-3 text-sm text-green-950"><strong>Already recorded today:</strong>
+      dry-run order #{{ c.recorded.id }} ({{ c.recorded.side }} {{ c.recorded.qty }}). The desk never repeats an order: see the journal below.</p>
+    {% elif d.can_place %}
+    <button type="button" hx-get="/desk/ticket?symbol={{ d.symbol | urlencode }}&amp;mode={{ c.mode }}" hx-include="#sizer" hx-target="#ticket-body"
+            class="mt-3 rounded bg-green-800 px-4 py-2 text-sm font-semibold text-white hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-800">Place order&hellip;</button>
+    {% else %}
+    <button type="button" disabled class="mt-3 cursor-not-allowed rounded bg-slate-300 px-4 py-2 text-sm font-semibold text-slate-800">Place order</button>
+    <p class="mt-2 text-sm"><strong>Why not:</strong> {{ d.ticket.skip }}</p>
+    {% if c.why %}<p class="text-xs text-slate-700">Waiting for: {{ c.why | join('; ') }}</p>{% endif %}
+    {% endif %}
+    <p class="mt-2 text-xs text-slate-700">Dry run only: the desk never overrides the verdict, and nothing is sent to a broker.</p>
+  </article>
+</section>
