@@ -1,7 +1,7 @@
 {
-  "name": "India Stock Picker",
+  "name": "Stock Picker",
   "short_name": "Stock Picker",
-  "description": "Explainable NSE stock screener with a dry-run order desk",
+  "description": "Explainable stock screener with a dry-run order desk",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

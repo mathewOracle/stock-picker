@@ -25,7 +25,7 @@ STOCK_PICKER_MARKET=us .venv/bin/python -m app.research all    # US research, sa
 The rest of this README describes the engine with India examples; every India-specific number above has a US
 counterpart in `app/market/us.py`.
 
-## India Stock Picker
+## The app (India examples)
 
 Two tools in one app for ~63 large-cap NSE stocks:
 
@@ -48,7 +48,7 @@ SmartAPI order parameters (`app/broker/angelone.py`, pure functions; nothing is 
 ### 1. One-time setup (Python 3.11+, [uv](https://docs.astral.sh/uv/))
 
 ```bash
-cd india-stock-picker
+cd stock-picker
 uv venv                                   # creates .venv
 
 # On the Walmart network (packages come from Artifactory):

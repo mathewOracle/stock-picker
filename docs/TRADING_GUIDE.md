@@ -13,7 +13,7 @@ First time on this machine? Do the one-time setup in the README's [Run](../READM
 (create `.venv`, install, load the data). After that, every session is:
 
 ```bash
-cd india-stock-picker
+cd stock-picker
 ./serve.sh                                            # http://127.0.0.1:61287 (Ctrl+C stops it)
 open http://127.0.0.1:61287                           # macOS; or paste the link into a browser
 ```

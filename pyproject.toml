@@ -1,7 +1,7 @@
 [project]
-name = "india-stock-picker"
+name = "stock-picker"
 version = "0.1.0"
-description = "Explainable, rules-based screener for large-cap NSE stocks"
+description = "Explainable, rules-based stock screener (India NSE + US large caps)"
 requires-python = ">=3.11"
 dependencies = [
     "yfinance",

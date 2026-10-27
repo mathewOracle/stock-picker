@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* =====================================================================================================
-   India Stock Picker design system. Templates use these named components instead of long class strings,
+   Stock Picker design system. Templates use these named components instead of long class strings,
    so one change here restyles every page. Tokens (colours, shadows, easing) are in tailwind.config.js.
    ===================================================================================================== */
 
