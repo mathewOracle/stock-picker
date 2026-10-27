@@ -1,16 +1,27 @@
 {% from "_rows.html" import swing_row %}
-{% from "_filters.html" import filter_card, chip_group, banner %}
-{% set tones = {'red': 'border-red-700 bg-red-50 text-red-950', 'amber': 'border-amber-600 bg-amber-50 text-amber-950',
-                'green': 'border-green-700 bg-green-50 text-green-950', 'slate': 'border-slate-500 bg-white'} %}
+{% from "_filters.html" import filter_card, chip_group %}
+{% from "_status.html" import tile, counts, attention_strip %}
+{% set regime_status = {'red': 'crit', 'amber': 'warn', 'green': 'ok', 'slate': 'none'} %}
 {% set bt = a.backtest %}
-<div class="mb-4 grid gap-2 md:grid-cols-2 lg:mb-5 lg:gap-3">
-  {% call banner(tones[a.regime.tone], 'Market regime: ' ~ a.regime.label ~ '.') %}{{ a.regime.detail }}
-    {% if a.breadth_200dma is not none %}Breadth: {{ (a.breadth_200dma * 100) | round | int }}% of stocks are above their 200-day average.{% endif %}{% endcall %}
-  {% call banner('border-green-700 bg-green-50 text-green-950' if bt and bt.passed else 'border-amber-600 bg-amber-50 text-amber-950',
-                 'Validation: ' ~ ('rules passed the backtest' if bt and bt.passed else ('rules have NOT been validated' if bt else 'backtest not run yet')) ~ '.') %}
-    {% if bt %}Edge vs random entries {{ bt.universe.buy.edge | pct }} (t {{ bt.universe.buy.t_stat | num(2) }}, 1.65 needed).{% endif %}
-    {% if not (bt and bt.passed) %}A Buy-rated stock is shown as Watchlist until the evidence supports it.{% endif %}{% endcall %}
+{% set t = tally %}
+<div class="mb-4 grid gap-3 md:grid-cols-3">
+  {% call tile(regime_status[a.regime.tone], 'Market regime', a.regime.label, 'Market regime: ' ~ a.regime.label ~ '.') %}
+    <p>{{ a.regime.detail }}</p>
+    {% if a.breadth_200dma is not none %}<p>Breadth: {{ (a.breadth_200dma * 100) | round | int }}% of stocks are above their 200-day average.</p>{% endif %}
+  {% endcall %}
+  {% call tile('ok' if bt and bt.passed else ('warn' if bt else 'none'), 'Evidence',
+               'Validated' if bt and bt.passed else ('Not validated' if bt else 'Not run'),
+               'Validation: ' ~ ('rules passed the backtest' if bt and bt.passed else ('rules have NOT been validated' if bt else 'backtest not run yet')) ~ '.') %}
+    {% if bt %}<p>Edge vs random entries {{ bt.universe.buy.edge | pct }} (t {{ bt.universe.buy.t_stat | num(2) }}, 1.65 needed).</p>{% endif %}
+    {% if not (bt and bt.passed) %}<p>A Buy-rated stock is shown as Watchlist until the evidence supports it.</p>{% endif %}
+  {% endcall %}
+  {% call tile('ok' if t.buy else 'info', 'Verdicts', (t.buy ~ ' validated Buy' ~ ('' if t.buy == 1 else 's')),
+               t.total ~ ' stocks ranked by buy intensity.') %}
+    {{ counts([('ok', t.buy, 'Buy'), ('warn', t.watch, 'Watchlist'), ('none', t.hold, 'Hold'), ('crit', t.avoid, 'Avoid')]) }}
+    {% if t.candidate %}<p>{{ t.candidate }} pass the price and fundamental rules but wait for validation.</p>{% endif %}
+  {% endcall %}
 </div>
+{% if has_data %}{{ attention_strip(attention, attention_total, 'swing') }}{% endif %}
 
 {% if not has_data %}
 <p class="card card-pad text-center text-slate-800">No daily data yet. Use <strong>Fetch market data</strong> above (about 30-60 seconds).</p>

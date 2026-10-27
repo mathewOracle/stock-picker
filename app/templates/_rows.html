@@ -2,7 +2,7 @@
 {% from "_icons.html" import icon %}
 {# One stock in the left-hand list. Filtering/sorting reads the data-* attributes in the browser (static/desk.js). #}
 
-{% set row_button = "list-row aria-[current=true]:bg-blue-50 aria-[current=true]:shadow-[inset_4px_0_0_#1d4ed8]" %}
+{% set row_button = "list-row aria-[current=true]:bg-blue-50 aria-[current=true]:shadow-[inset_4px_0_0_#38bdf8]" %}
 
 {% macro swing_row(row, selected, oob=false) %}{% set r = row.r %}
 <li id="row-{{ r.symbol }}" {% if oob %}hx-swap-oob="true"{% endif %}
@@ -16,7 +16,7 @@
       <span class="flex items-center justify-between gap-2"><span class="truncate font-semibold">{{ r.name }}</span>{{ badge(r.verdict) }}</span>
       <span class="mt-0.5 block truncate text-xs text-slate-600">{{ r.symbol | short_symbol }} &middot; {{ r.metrics.sector }}</span>
       <span class="mt-1.5 flex items-center gap-2">
-        <span class="meter" aria-hidden="true"><span data-bar class="absolute inset-y-0 left-0 rounded-full bg-slate-800" style="width: {{ row.intensity | round(1) }}%"></span></span>
+        <span class="meter" aria-hidden="true"><span data-bar class="absolute inset-y-0 left-0 rounded-full bg-accent" style="width: {{ row.intensity | round(1) }}%"></span></span>
         <span class="w-7 text-right text-sm font-bold tabular-nums" title="Buy intensity (composite score)">{{ row.intensity | round | int }}</span>
       </span>
       <span class="mt-1 block text-xs text-slate-600">F {{ r.scores.fundamental | round | int }} &middot; T {{ r.scores.technical | round | int }} &middot; C {{ r.scores.chart | round | int }}

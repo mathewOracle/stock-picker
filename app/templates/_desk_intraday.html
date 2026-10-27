@@ -1,13 +1,27 @@
 {% from "_rows.html" import intraday_row %}
-{% from "_filters.html" import filter_card, chip_group, banner %}
+{% from "_filters.html" import filter_card, chip_group %}
+{% from "_status.html" import tile, counts, attention_strip %}
 {% from "_macros.html" import delta %}
 {% set st = scan.status %}
-<div class="mb-4 lg:mb-5">
-{% call banner('border-green-700 bg-green-50 text-green-950' if st and st.is_open else 'border-slate-500 bg-white', ('Market: ' ~ st.phase ~ '.') if st else 'No intraday data yet.') %}
-  {% if st %}{{ st.note }} Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '-' }}
-  &middot; {{ market.benchmark_name }} today {{ delta(st.index_change) }} &middot; no new entries after {{ no_new_entries }}; every trade is closed by {{ square_off }}.{% endif %}
+{% set t = tally %}
+<div class="mb-4 grid gap-3 md:grid-cols-3">
+{% call tile(('ok' if st.accepting_entries else 'warn') if st and st.is_open else 'none', 'Session',
+             'Open' if st and st.is_open else 'Closed', ('Market: ' ~ st.phase ~ '.') if st else 'No intraday data yet.') %}
+  {% if st %}<p>{{ st.note }} Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '-' }}
+  &middot; {{ market.benchmark_name }} today {{ delta(st.index_change) }} &middot; no new entries after {{ no_new_entries }}; every trade is closed by {{ square_off }}.</p>{% endif %}
+{% endcall %}
+{% call tile('ok' if t.setup else 'info', 'Setups', t.setup ~ ' tradeable', t.total ~ ' stocks scanned against the playbook.') %}
+  {{ counts([('ok', t.setup, 'tradeable'), ('warn', t.candidate, 'unvalidated'), ('none', t.near_miss, 'near-misses'), ('none', t.quiet, 'quiet')]) }}
+  <p>Unvalidated: every check passes but the playbook's backtest does not support it. Near-miss: a pattern was found
+    but failed reward/risk, the intraday bias or a market rule.</p>
+{% endcall %}
+{% call tile('info', 'Tape', 'Long-leaning' if t.long > t.short else ('Short-leaning' if t.short > t.long else 'Balanced'),
+             'Intraday bias across the list.') %}
+  {{ counts([('ok', t.long, 'lean long'), ('crit', t.short, 'lean short'), ('none', t.flat, 'flat')]) }}
+  <p>Long needs bias &ge; {{ long_bias }}, short needs &le; {{ short_bias }}.</p>
 {% endcall %}
 </div>
+{% if has_data %}{{ attention_strip(attention, attention_total, 'intraday') }}{% endif %}
 
 {% if not has_data %}
 <p class="card card-pad text-center text-slate-800">No intraday data yet. Load daily data on the Swing tab first, then use <strong>Fetch intraday data</strong> above (about 10 seconds).</p>

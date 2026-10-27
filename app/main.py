@@ -65,6 +65,12 @@ def timestamp(value) -> str:
     return "never" if value is None else datetime.fromtimestamp(value).strftime("%d %b %Y, %H:%M")
 
 
+def session_state() -> dict:
+    """The exchange's phase right now, for the live dot in the header (holidays and half-days included)."""
+    label, is_open, _ = intraday.market_phase(datetime.now(MARKET.clock.tz))
+    return {"label": label, "open": is_open}
+
+
 templates.env.filters.update(pct=pct, num=num, pe=pe, money_big=money_big, money_units=money_units, timestamp=timestamp,
                               short_symbol=MARKET.short_symbol, evidence_note=intraday.describe_evidence)
 templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}",
@@ -72,7 +78,7 @@ templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"
                              long_bias=intraday.LONG_BIAS, short_bias=intraday.SHORT_BIAS,
                              max_risk_pct=desk.MAX_RISK_PCT,  # one source for the risk cap: forms and orders agree
                              market=MARKET, accounts=desk.ACCOUNTS, tz_label=intraday.tz_label,
-                             u2_count=len(u2.SYMBOLS))
+                             u2_count=len(u2.SYMBOLS), session_state=session_state)
 
 
 # ---------- market overview (the old swing dashboard) ----------

@@ -15,8 +15,11 @@
     scroll-padding-bottom: 6rem;
   }
   @media (min-width: 1024px) { html { scroll-padding-bottom: 1rem; } }
+  /* color-scheme: native selects, date pickers and scrollbars render dark too */
+  html { color-scheme: dark; }
   body { @apply bg-canvas text-slate-900 antialiased; }
-  :focus-visible { outline: 2px solid theme("colors.accent.DEFAULT"); outline-offset: 2px; }
+  /* WCAG 2.4.7 / 2.4.11: the Careers Monitor focus ring, 3px sky with a gap */
+  :focus-visible { outline: 3px solid theme("colors.accent.DEFAULT"); outline-offset: 3px; }
   summary { @apply cursor-pointer; }
   [hidden] { display: none !important; }
   /* htmx only fades its indicators; hide them completely so an idle one doesn't leave a blank gap */
@@ -31,7 +34,7 @@
 
 @layer components {
   /* ---- surfaces ---- */
-  .card { @apply rounded-2xl bg-white shadow-card ring-1 ring-slate-900/5; }
+  .card { @apply rounded-2xl bg-white shadow-card; }
   .card-pad { @apply p-4 sm:p-5; }
   .notice { @apply rounded-2xl border-l-4 p-4 text-sm shadow-card; }
   .eyebrow { @apply text-xs font-semibold uppercase tracking-wide text-slate-600; }   /* grouped-list section label */
@@ -45,7 +48,7 @@
   }
   .btn-sm { @apply min-h-[2.25rem] rounded-lg px-3; }                                   /* 36px */
   .btn-primary { @apply bg-accent text-white shadow-sm hover:bg-accent-pressed; }
-  .btn-dark { @apply bg-slate-900 text-white shadow-sm hover:bg-slate-700; }
+  .btn-dark { @apply bg-accent text-canvas shadow-sm hover:bg-accent-pressed; }   /* the Careers Monitor sky primary action */
   .btn-success { @apply bg-green-700 text-white shadow-sm hover:bg-green-800; }
   .btn-secondary { @apply bg-white text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50; }
   .btn-quiet { @apply text-accent hover:bg-blue-50; }
@@ -54,14 +57,14 @@
   .chip {
     @apply inline-flex min-h-[2.25rem] items-center rounded-full border border-slate-400 bg-white px-3 text-sm font-medium text-slate-800
            transition duration-150 ease-native hover:bg-slate-50 active:scale-[0.96]
-           aria-pressed:border-slate-900 aria-pressed:bg-slate-900 aria-pressed:text-white;
+           aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-canvas;
   }
   .chip-buy { @apply border-green-700 text-green-900 aria-pressed:border-green-700 aria-pressed:bg-green-700; }
   .chip-short { @apply border-red-700 text-red-900 aria-pressed:border-red-700 aria-pressed:bg-red-700; }
-  .segmented { @apply inline-flex gap-1 rounded-xl bg-slate-200 p-1; }
+  .segmented { @apply inline-flex gap-1 rounded-xl bg-canvas p-1 ring-1 ring-slate-300; }
   .segment {
     @apply inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-lg px-4 text-sm font-semibold text-slate-700 transition duration-150 ease-native
-           hover:bg-white/60 hover:text-slate-900 aria-[current=page]:bg-slate-900 aria-[current=page]:text-white aria-[current=page]:shadow-sm;
+           hover:bg-slate-100 hover:text-slate-900 aria-[current=page]:bg-accent aria-[current=page]:text-canvas aria-[current=page]:shadow-sm;
   }
 
   /* ---- form fields: the boundary is slate-500 (4.8:1) because WCAG 1.4.11 needs 3:1 to find the field ---- */
@@ -79,20 +82,33 @@
   .meter { @apply relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200; }
 
   /* ---- bottom tab bar (phones) ---- */
-  .tabbar { @apply fixed inset-x-0 bottom-0 z-30 border-t border-slate-900/10 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden; }
+  .tabbar { @apply fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-canvas/90 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden; }
   .tabbar-item { @apply flex min-h-[3.5rem] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-600; }
   .tabbar-icon { @apply grid h-7 w-12 place-items-center rounded-full transition duration-150 ease-native; }
   .tabbar-item[aria-current="page"] { @apply text-slate-900; }
-  .tabbar-item[aria-current="page"] .tabbar-icon { @apply bg-slate-900 text-white; }
+  .tabbar-item[aria-current="page"] .tabbar-icon { @apply bg-accent text-canvas; }
 
   /* ---- dialogs: a bottom sheet on phones, a centred card from sm up ---- */
   .sheet {
-    @apply mb-0 mt-auto max-h-[92vh] w-full max-w-full overflow-y-auto rounded-t-3xl border-0 bg-white p-0 shadow-sheet
-           backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm sm:m-auto sm:rounded-2xl;
+    @apply mb-0 mt-auto max-h-[92vh] w-full max-w-full overflow-y-auto rounded-t-3xl border-0 bg-white p-0 shadow-sheet ring-1 ring-slate-300
+           backdrop:bg-black/70 backdrop:backdrop-blur-sm sm:m-auto sm:rounded-2xl;
   }
   .sheet[open] { animation: sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .sheet-handle { @apply mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-300 sm:hidden; }
+
+  /* ---- Careers Monitor status tiles: a status is never colour alone (WCAG 1.4.1): icon shape + word + colour ---- */
+  .tile { @apply flex min-w-0 flex-col gap-1.5 rounded-2xl border-2 bg-white/60 p-4 text-left transition duration-150; }
+  .tile-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-full; }
+  .attention { @apply flex items-center gap-3 overflow-x-auto pb-1; }
+  .attention-chip { @apply flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-xs transition hover:brightness-125; }
+  .brand-tile { @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent to-green-700 text-sm font-black text-canvas; }
 }
+
+/* the live market dot pings while the exchange is open; a critical tile pulses (both off for reduced motion, see base) */
+@keyframes live-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
+.live-ping { animation: live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes crit-glow { 0%, 100% { box-shadow: 0 0 0 0 rgb(244 63 94 / 0.55); } 50% { box-shadow: 0 0 0 10px rgb(244 63 94 / 0); } }
+.crit-glow { animation: crit-glow 1.8s ease-in-out infinite; }
 
 @keyframes sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 
@@ -108,3 +124,4 @@
   [data-detail-open] .detail-pane { transform: none; visibility: visible; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
   body:has([data-detail-open]) { overflow: hidden; }
 }
+@media (prefers-reduced-motion: reduce) { .live-ping, .crit-glow { animation: none; } }

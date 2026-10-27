@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f2f2f7">
+  <meta name="theme-color" content="#020617">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Stock Picker">
   <title>{% block title %}{{ market.app_name }}{% endblock %}</title>
@@ -16,11 +16,20 @@
 </head>
 <body class="min-h-screen">
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:p-3 focus:shadow-card">Skip to content</a>
-  <header class="sticky top-0 z-30 border-b border-slate-900/10 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+  {% set session = session_state() %}
+  <header class="sticky top-0 z-30 border-b border-slate-200 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
     <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5">
-      <a href="/" class="flex items-center gap-2 rounded-lg text-base font-bold tracking-tight text-slate-900">
-        <img src="/static/icon.svg" alt="" width="28" height="28" class="h-7 w-7">{{ market.app_name }}</a>
-      <div class="flex items-center gap-2">
+      <a href="/" class="flex items-center gap-3 rounded-lg">
+        <span class="brand-tile" aria-hidden="true">{{ market.key[:2] | upper }}</span>
+        <span><span class="block text-base font-bold leading-tight tracking-tight text-slate-900">{{ market.app_name }}</span>
+          <span class="hidden text-xs text-slate-600 sm:block">{{ market.exchange }} &middot; Swing &middot; Intraday &middot; Order desk</span></span></a>
+      <div class="flex items-center gap-3">
+        {# the Careers Monitor "Streaming" dot: pings while the exchange is open (calendar-aware: holidays, half-days) #}
+        <span class="flex items-center gap-2 text-xs font-medium text-slate-800" title="{{ market.exchange }}: {{ session.label }}">
+          <span class="relative flex h-2.5 w-2.5" aria-hidden="true">
+            {% if session.open %}<span class="live-ping absolute inline-flex h-full w-full rounded-full bg-green-700"></span>{% endif %}
+            <span class="relative inline-flex h-2.5 w-2.5 rounded-full {{ 'bg-green-700' if session.open else 'bg-amber-700' }}"></span></span>
+          <span class="sr-only sm:not-sr-only">{{ market.exchange }} {{ 'open' if session.open else 'closed' }}<span class="sr-only">: {{ session.label }}</span></span></span>
         {# a safety fact, so it is on every page: nothing here can reach a broker #}
         <span class="pill bg-amber-100 text-amber-950 ring-1 ring-amber-700">
           <span class="h-1.5 w-1.5 rounded-full bg-amber-700" aria-hidden="true"></span>Dry run<span class="sr-only">: orders are only written to a local journal, nothing is sent to a broker</span></span>

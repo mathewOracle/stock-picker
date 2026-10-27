@@ -11,17 +11,6 @@
 </details>
 {%- endmacro %}
 
-{# A status banner: the headline is always visible; on phones the detail is one tap away (open on desktop) #}
-{% macro banner(tone, headline) -%}
-<details data-desktop-open class="notice group {{ tone }}">
-  <summary class="flex min-h-6 list-none items-start gap-2 [&::-webkit-details-marker]:hidden">
-    <strong>{{ headline }}</strong>
-    <span class="ml-auto mt-0.5 transition group-open:rotate-180 lg:hidden">{{ icon('chevron-down', 'h-4 w-4') }}</span>
-  </summary>
-  <p class="mt-1">{{ caller() }}</p>
-</details>
-{%- endmacro %}
-
 {# A labelled row of toggle chips that filter `target` by data-{key} #}
 {% macro chip_group(target, key, legend, options) -%}
 <div role="group" aria-labelledby="grp-{{ target[1:] }}-{{ key }}">

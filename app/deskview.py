@@ -7,6 +7,7 @@ Short intensity only exists intraday, where a short is a real trade: it is 100 -
 """
 
 import time
+from collections import Counter
 from datetime import datetime
 
 from app import analysis, data
@@ -142,6 +143,43 @@ def intraday_rows(scan, rank: str = "long") -> list[dict]:
     return sorted(rows, key=lambda row: -row["buy" if rank == "long" else "short"])
 
 
+# ---------- overview: Careers-Monitor-style status tiles and the "needs attention" strip ----------
+
+ATTENTION_LIMIT = 12
+# blocking problems first, then what you can act on, then near-misses (rows keep their intensity order within each)
+ATTENTION_ORDER = {"crit": 0, "ok": 1, "warn": 2}
+
+
+def tally(rows: list[dict], tab: str) -> dict[str, int]:
+    """Counts for the tiles: verdict groups (swing) or setup kinds and tape lean (intraday)."""
+    if tab == "swing":
+        verdicts = Counter(row["r"].verdict for row in rows)
+        return {"buy": sum(verdicts[v] for v in BUY_LEVELS), "watch": verdicts["Watchlist"], "hold": verdicts["Hold"],
+                "avoid": verdicts["Avoid"], "candidate": sum(row["candidate"] for row in rows), "total": len(rows)}
+    kinds, leans = Counter(row["kind"] for row in rows), Counter(row["lean"] for row in rows)
+    near_miss = sum(row["kind"] == "none" and bool(row["r"].setups) for row in rows)   # a pattern found, a check failed
+    return {"setup": kinds["setup"], "candidate": kinds["candidate"], "near_miss": near_miss,
+            "quiet": kinds["wait"] + kinds["none"] - near_miss,
+            "long": leans["long"], "short": leans["short"], "flat": leans["flat"], "total": len(rows)}
+
+
+def attention(tab: str, rows: list[dict], fresh: dict) -> tuple[list[dict], int]:
+    """(the first ATTENTION_LIMIT items, how many there are). An item with a symbol selects that stock when clicked."""
+    items = [{"status": "crit", "label": "Stale data", "reason": f"oldest data {fresh['label']}: refresh before ordering",
+              "symbol": ""}] if fresh["stale"] else []
+    for row in rows:
+        r = row["r"]
+        if tab == "swing" and r.verdict in BUY_LEVELS:
+            items.append({"status": "ok", "label": r.name, "reason": f"{r.verdict}, validated", "symbol": r.symbol})
+        elif tab == "swing" and row["candidate"]:
+            items.append({"status": "warn", "label": r.name, "reason": "rules say Buy, not validated", "symbol": r.symbol})
+        elif tab == "intraday" and row["kind"] in ("setup", "candidate"):
+            items.append({"status": "ok" if row["kind"] == "setup" else "warn", "label": r.name,
+                          "reason": r.verdict if row["kind"] == "setup" else r.reason, "symbol": r.symbol})
+    items.sort(key=lambda item: ATTENTION_ORDER[item["status"]])
+    return items[:ATTENTION_LIMIT], len(items)
+
+
 def pick(rows: list[dict], symbol: str):
     """The selected report: `symbol` if this tab has it, else the top-ranked one (None for an empty tab)."""
     for row in rows:
@@ -172,6 +210,8 @@ def page_context(tab: str, symbol: str, rank: str) -> dict:
            "oldest": data.oldest_stock_refresh(KIND[tab]),
            "orders": desk.recent_orders()}
     ctx["oldest_fresh"] = freshness(ctx["oldest"], tab, _market_open(tab), time.time())
+    ctx["tally"] = tally(rows, tab)
+    ctx["attention"], ctx["attention_total"] = attention(tab, rows, ctx["oldest_fresh"])
     ctx["a" if tab == "swing" else "scan"] = result
     if selected is not None:
         ctx.update(detail_context(tab, selected))

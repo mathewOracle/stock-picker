@@ -2,18 +2,22 @@
 // Shared helpers first; renderCharts = daily swing page, renderIntradayCharts = 5-minute page.
 /* global LightweightCharts */
 
+// The dark Careers Monitor palette (tailwind.config.js): emerald up, rose down, sky entry; one place for every colour.
 const COLORS = {
-  up: '#15803d', down: '#b91c1c', band: '#94a3b8', level: '#64748b',
-  entry: '#1d4ed8', stop: '#b91c1c', target: '#15803d',
+  up: '#34d399', down: '#fb7185', band: '#8b9ab0', level: '#64748b',
+  entry: '#38bdf8', stop: '#fb7185', target: '#34d399',
+  fast: '#38bdf8', mid: '#a78bfa', slow: '#fb923c', trail: '#2dd4bf',
+  upFaint: '#34d39999', downFaint: '#fb718599',
+  surface: '#0f172a', text: '#cbd5e1', grid: '#1e293b', border: '#334155',
 };
 
 function newChart(id, extra = {}) {
   return LightweightCharts.createChart(document.getElementById(id), {
     autoSize: true,
-    layout: { background: { color: '#ffffff' }, textColor: '#1e293b' },
-    grid: { vertLines: { color: '#f1f5f9' }, horzLines: { color: '#f1f5f9' } },
-    rightPriceScale: { borderColor: '#cbd5e1' },
-    timeScale: { borderColor: '#cbd5e1' },
+    layout: { background: { color: COLORS.surface }, textColor: COLORS.text },
+    grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
+    rightPriceScale: { borderColor: COLORS.border },
+    timeScale: { borderColor: COLORS.border },
     ...extra,
   });
 }
@@ -55,7 +59,7 @@ function addPlan(series, plan) {
 
 function addRsi(chart, data) {
   const { LineStyle } = LightweightCharts;
-  const rsi = addLine(chart, data, '#7c3aed', { lastValueVisible: true });
+  const rsi = addLine(chart, data, COLORS.mid, { lastValueVisible: true });
   [70, 30].forEach((level) => rsi.createPriceLine({
     price: level, color: COLORS.band, lineWidth: 1, lineStyle: LineStyle.Dashed,
     axisLabelVisible: false, title: String(level),
@@ -79,10 +83,10 @@ function renderCharts(d) {
   const candles = addCandles(price, d);
   addLine(price, d.bb_upper, COLORS.band, { lineWidth: 1, lineStyle: LineStyle.Dashed });
   addLine(price, d.bb_lower, COLORS.band, { lineWidth: 1, lineStyle: LineStyle.Dashed });
-  addLine(price, d.ema20, '#0284c7', { lineWidth: 1 });
-  addLine(price, d.sma50, '#7c3aed');
-  addLine(price, d.sma200, '#ea580c', { lineWidth: 2 });
-  addLine(price, d.st_line, '#0f766e', { lineWidth: 1, lineStyle: LineStyle.SparseDotted });
+  addLine(price, d.ema20, COLORS.fast, { lineWidth: 1 });
+  addLine(price, d.sma50, COLORS.mid);
+  addLine(price, d.sma200, COLORS.slow, { lineWidth: 2 });
+  addLine(price, d.st_line, COLORS.trail, { lineWidth: 1, lineStyle: LineStyle.SparseDotted });
   addLevels(candles, d.levels);
   addPlan(candles, d.plan);
 
@@ -91,9 +95,9 @@ function renderCharts(d) {
 
   const macd = newChart('macd-chart');
   const hist = macd.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false });
-  hist.setData(d.macd_hist.map((p) => ({ ...p, color: p.value >= 0 ? '#16a34a99' : '#dc262699' })));
+  hist.setData(d.macd_hist.map((p) => ({ ...p, color: p.value >= 0 ? COLORS.upFaint : COLORS.downFaint })));
   addLine(macd, d.macd, COLORS.entry);
-  addLine(macd, d.macd_signal, '#ea580c');
+  addLine(macd, d.macd_signal, COLORS.slow);
 
   syncCharts([price, rsi, macd]);
   price.timeScale().fitContent();
@@ -102,14 +106,14 @@ function renderCharts(d) {
 function renderIntradayCharts(d) {
   const { LineStyle } = LightweightCharts;
   // times arrive as IST wall-clock encoded as UTC epochs, so the UTC axis reads in IST
-  const intraday = { timeScale: { borderColor: '#cbd5e1', timeVisible: true, secondsVisible: false } };
+  const intraday = { timeScale: { borderColor: COLORS.border, timeVisible: true, secondsVisible: false } };
   const price = newChart('intraday-chart', intraday);
   const candles = addCandles(price, d);
   addLine(price, d.vwap_u2, COLORS.band, { lineWidth: 1, lineStyle: LineStyle.Dashed });
   addLine(price, d.vwap_l2, COLORS.band, { lineWidth: 1, lineStyle: LineStyle.Dashed });
   addLine(price, d.vwap, COLORS.entry, { lineWidth: 2 });
-  addLine(price, d.ema9, '#0284c7', { lineWidth: 1 });
-  addLine(price, d.ema21, '#7c3aed', { lineWidth: 1 });
+  addLine(price, d.ema9, COLORS.fast, { lineWidth: 1 });
+  addLine(price, d.ema21, COLORS.mid, { lineWidth: 1 });
   addLevels(candles, d.levels);
   addPlan(candles, d.plan);
 

@@ -1,0 +1,54 @@
+{% from "_icons.html" import icon %}
+{# The Careers Monitor status vocabulary, in one place (like its status.ts). A status is never colour alone
+   (WCAG 1.4.1): each has its own icon shape and a word. Colours come from the dark palette in tailwind.config.js. #}
+{% set STATUS = {
+  'crit': {'icon': 'x', 'word': 'Problem', 'text': 'text-red-800', 'ring': 'border-red-600', 'pill': 'bg-red-600/15 text-red-900 ring-1 ring-red-600/60'},
+  'warn': {'icon': 'warn', 'word': 'Caution', 'text': 'text-amber-800', 'ring': 'border-amber-600', 'pill': 'bg-amber-600/15 text-amber-900 ring-1 ring-amber-600/60'},
+  'ok': {'icon': 'check', 'word': 'Good', 'text': 'text-green-800', 'ring': 'border-green-600/70', 'pill': 'bg-green-600/15 text-green-900 ring-1 ring-green-600/50'},
+  'info': {'icon': 'info', 'word': 'Info', 'text': 'text-blue-800', 'ring': 'border-blue-600/60', 'pill': 'bg-blue-600/15 text-blue-900 ring-1 ring-blue-600/50'},
+  'none': {'icon': 'dot', 'word': 'Neutral', 'text': 'text-slate-700', 'ring': 'border-slate-300', 'pill': 'bg-slate-300/40 text-slate-800 ring-1 ring-slate-400'},
+} %}
+
+{% macro status_icon(status, size='h-4 w-4') -%}{{ icon(STATUS[status].icon, size) }}{%- endmacro %}
+
+{# A summary tile: icon + title + status word always visible; the detail is one tap away on phones, open on desktop
+   (data-desktop-open, static/desk.js). A critical tile pulses (off for reduced motion). #}
+{% macro tile(status, title, word, headline) -%}{% set s = STATUS[status] %}
+<details data-desktop-open data-status="{{ status }}" class="tile group {{ s.ring }}{{ ' crit-glow' if status == 'crit' }}">
+  <summary class="flex list-none flex-col gap-1.5 [&::-webkit-details-marker]:hidden">
+    <span class="flex items-center gap-2">
+      <span class="tile-icon {{ s.pill }}">{{ status_icon(status) }}</span>
+      <span class="font-bold text-slate-900">{{ title }}</span>
+      <span class="ml-auto text-right text-xs font-semibold uppercase tracking-wide {{ s.text }}">{{ word }}</span>
+      <span class="transition group-open:rotate-180 lg:hidden">{{ icon('chevron-down', 'h-4 w-4') }}</span>
+    </span>
+    <strong class="text-sm text-slate-800">{{ headline }}</strong>
+  </summary>
+  <div class="space-y-1.5 text-xs text-slate-700">{{ caller() }}</div>
+</details>
+{%- endmacro %}
+
+{# icon + number + label per status, e.g. " 3 Buy   12 Watchlist" (items: (status, n, label)) #}
+{% macro counts(items) -%}
+<p class="flex flex-wrap items-center gap-x-3 gap-y-1">
+  {% for status, n, label in items %}<span class="flex items-center gap-1 font-semibold {{ STATUS[status].text }}">{{ status_icon(status, 'h-3.5 w-3.5') }}{{ n }}<span class="font-normal text-slate-700">{{ label }}</span></span>{% endfor %}
+</p>
+{%- endmacro %}
+
+{# "Needs attention (n)": a horizontally scrolling row of chips; a chip with a stock selects it, like a list row #}
+{% macro attention_strip(items, total, tab) -%}
+<section aria-labelledby="att-h" class="attention mb-4">
+  <h2 id="att-h" class="eyebrow shrink-0">Needs attention <span class="text-slate-900">({{ total }})</span></h2>
+  {% if not items %}<span class="flex shrink-0 items-center gap-1 text-xs text-green-800">{{ status_icon('ok', 'h-3.5 w-3.5') }}Nothing needs attention right now</span>{% endif %}
+  {% for it in items %}{% set s = STATUS[it.status] %}
+    {% if it.symbol %}
+    <button type="button" hx-get="/detail?tab={{ tab }}&amp;symbol={{ it.symbol | urlencode }}" hx-target="#detail"
+            hx-push-url="/?tab={{ tab }}&amp;symbol={{ it.symbol | urlencode }}" class="attention-chip {{ s.pill }}">
+    {% else %}<span class="attention-chip {{ s.pill }}">{% endif %}
+      {{ status_icon(it.status, 'h-3.5 w-3.5') }}<span class="sr-only">{{ s.word }}:</span>
+      <span class="font-semibold">{{ it.label }}</span><span class="max-w-56 truncate opacity-80">{{ it.reason }}</span>
+    {% if it.symbol %}</button>{% else %}</span>{% endif %}
+  {% endfor %}
+  {% if total > items | length %}<span class="shrink-0 text-xs text-slate-600">+{{ total - items | length }} more in the list</span>{% endif %}
+</section>
+{%- endmacro %}
