@@ -1,6 +1,6 @@
 /**
  * Design tokens: a dark trading-terminal theme (slate darks, sky accent, emerald / amber / rose status colours).
- * Gradients stay simple: one hue, two stops. Tailwind scans the templates and scripts for class names; component
+ * Gradients stay simple: two stops, sky -> emerald (.accent-gradient, .brand-tile in input.css). Tailwind scans the templates and scripts for class names; component
  * classes live in app/static/src/input.css.
  *
  * How the dark theme works without touching ~600 class names in the templates: every scale below runs from

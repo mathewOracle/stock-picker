@@ -103,8 +103,10 @@
   .tile-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg; }
   .attention { @apply flex items-center gap-2 overflow-x-auto pb-1; }
   .attention-chip { @apply flex shrink-0 items-center gap-2 rounded-lg border-l-2 px-2.5 py-1 text-xs transition hover:brightness-125; }
-  /* one simple gradient for every market (the letters say which market): sky, light to a shade deeper */
-  .brand-tile { @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent to-blue-600 text-sm font-black text-canvas shadow-card; }
+  /* the two accents in one simple gradient, sky -> emerald, for every market (the letters say which market).
+     Green stays decorative or "buy" in meaning: buttons and selected states keep sky, so green still reads as "good". */
+  .brand-tile { @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent to-green-700 text-sm font-black text-canvas shadow-card; }
+  .accent-gradient { @apply bg-gradient-to-r from-accent to-green-700; }
 }
 
 /* the live market dot pings while the exchange is open; a critical tile's rail glows (both off for reduced motion) */
