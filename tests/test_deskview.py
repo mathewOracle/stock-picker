@@ -30,6 +30,18 @@ def test_intraday_buy_and_short_intensity_rank_in_opposite_directions():
     assert [r["r"].symbol for r in deskview.intraday_rows(scan, "short")] == ["B", "C", "A"]
 
 
+def test_intraday_default_quality_rank_puts_tradeable_setup_before_intensity_only_rows():
+    setup = live("A", 55, "Long setup")
+    setup.best = SimpleNamespace(playbook=SimpleNamespace(key="vwap"), side="Long",
+                                 plan=SimpleNamespace(reward_risk=1.8))
+    setup.evidence = {"vwap:Long": {"status": "supported"}}
+    candidate = live("B", 95, "Long candidate")
+    no_trade = live("C", 80, "No trade")
+    rows = deskview.intraday_rows(SimpleNamespace(reports=[candidate, no_trade, setup]))
+    assert [row["r"].symbol for row in rows] == ["A", "B", "C"]
+    assert rows[0]["quality"] > rows[1]["quality"] > rows[2]["quality"]
+
+
 def test_short_intensity_is_the_mirror_of_buy_intensity():
     row = deskview.intraday_rows(SimpleNamespace(reports=[live("A", 62)]))[0]
     assert (row["buy"], row["short"]) == (62, 38)

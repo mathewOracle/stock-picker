@@ -136,11 +136,29 @@ def lean(bias: float) -> str:
     return "long" if bias >= intraday.LONG_BIAS else "short" if bias <= intraday.SHORT_BIAS else "flat"
 
 
-def intraday_rows(scan, rank: str = "long") -> list[dict]:
-    """Every stock ranked by buy intensity (rank='long') or short intensity (rank='short')."""
+def intraday_quality(report) -> float:
+    """Explainable opportunity rank; this is quality ordering, not a fabricated probability of profit."""
+    kind_points = {"setup": 400.0, "candidate": 300.0, "wait": 100.0, "none": 0.0}
+    kind = intraday_kind(report.verdict)
+    score = kind_points[kind]
+    setup = getattr(report, "best", None)
+    if setup is None:
+        return score
+    evidence = getattr(report, "evidence", {}).get(f"{setup.playbook.key}:{setup.side}", {})
+    if evidence.get("status") == "supported":
+        score += 50.0
+    # Reward/risk is capped so one extreme estimate cannot overwhelm a validated setup.
+    score += min(float(getattr(setup.plan, "reward_risk", 0.0)), 4.0) * 10.0
+    score += min(abs(report.scores.get("bias", 50.0) - 50.0), 50.0) * 0.1
+    return score
+
+
+def intraday_rows(scan, rank: str = "quality") -> list[dict]:
+    """Every stock, quality-first by default; explicit long/short ranks remain available for tape views."""
     rows = [{"r": r, "buy": r.scores["bias"], "short": 100 - r.scores["bias"], "kind": intraday_kind(r.verdict),
-             "lean": lean(r.scores["bias"])} for r in scan.reports]
-    return sorted(rows, key=lambda row: -row["buy" if rank == "long" else "short"])
+             "lean": lean(r.scores["bias"]), "quality": intraday_quality(r)} for r in scan.reports]
+    key = "buy" if rank == "long" else "short" if rank == "short" else "quality"
+    return sorted(rows, key=lambda row: -row[key])
 
 
 # ---------- overview: Careers-Monitor-style status tiles and the "needs attention" strip ----------

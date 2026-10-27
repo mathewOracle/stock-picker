@@ -142,7 +142,7 @@ def intraday_stock(request: Request, symbol: str):
 # ---------- order desk: the home page ----------
 
 Mode = Literal["swing", "intraday"]
-Rank = Literal["long", "short"]
+Rank = Literal["quality", "long", "short"]
 
 
 def _is_partial(request: Request) -> bool:
@@ -156,7 +156,7 @@ def _require_htmx(request: Request) -> None:
 
 
 @app.get("/", response_class=HTMLResponse)
-def desk_page(request: Request, tab: Mode = "swing", symbol: str = "", rank: Rank = "long"):
+def desk_page(request: Request, tab: Mode = "swing", symbol: str = "", rank: Rank = "quality"): 
     try:
         ctx = deskview.page_context(tab, symbol, rank)
     except deskview.UnknownSymbol:

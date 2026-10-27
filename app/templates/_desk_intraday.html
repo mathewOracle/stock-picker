@@ -28,8 +28,9 @@
 {% else %}
 <div class="grid gap-5 lg:grid-cols-[24rem_minmax(0,1fr)]">
   <section aria-labelledby="list-h" class="min-w-0">
-    <h2 id="list-h" class="eyebrow mb-2 px-1">Stocks by intensity</h2>
+    <h2 id="list-h" class="eyebrow mb-2 px-1">Best trade opportunities first</h2>
     <div role="group" aria-label="Rank by" class="mb-3 grid grid-cols-2 gap-1.5">
+      <button type="button" data-target="#intraday-list" data-sort="-quality" aria-pressed="{{ 'true' if rank == 'quality' else 'false' }}" class="chip chip-buy justify-center">Trade quality</button>
       <button type="button" data-target="#intraday-list" data-sort="-buy" aria-pressed="{{ 'true' if rank == 'long' else 'false' }}" class="chip chip-buy justify-center">Buy intensity</button>
       <button type="button" data-target="#intraday-list" data-sort="-short" aria-pressed="{{ 'true' if rank == 'short' else 'false' }}" class="chip chip-short justify-center">Short intensity</button>
     </div>
@@ -39,7 +40,7 @@
       <label class="block"><span class="label">Search</span>
         <input type="search" data-target="#intraday-list" data-search placeholder="Name or symbol" class="field"></label>
     {% endcall %}
-    <ul id="intraday-list" data-default-sort="{{ '-short' if rank == 'short' else '-buy' }}" aria-label="Stocks ranked by intensity" class="list-group lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto">
+    <ul id="intraday-list" data-default-sort="{{ '-short' if rank == 'short' else '-buy' if rank == 'long' else '-quality' }}" aria-label="Stocks ranked by trade quality" class="list-group lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto">
       {% for row in stocks %}{{ intraday_row(row, selected, rank) }}{% endfor %}
     </ul>
   </section>

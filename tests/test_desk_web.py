@@ -55,7 +55,7 @@ def test_home_is_the_order_desk_with_two_tabs_and_research_is_not_a_tab():
 @needs_cache
 def test_intraday_tab_has_buy_and_short_intensity_rank_buttons():
     html = client.get("/?tab=intraday").text
-    assert 'id="intraday-list"' in html and 'data-sort="-buy"' in html and 'data-sort="-short"' in html
+    assert 'id="intraday-list"' in html and 'data-sort="-quality"' in html and 'data-sort="-short"' in html
     assert 'hx-get="/research/intraday"' in html and "Refresh intraday data" in html and "Long-leaning" in html
 
 
