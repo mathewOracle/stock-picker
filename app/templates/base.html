@@ -18,7 +18,7 @@
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:p-3 focus:shadow-card">Skip to content</a>
   {% set session = session_state() %}
   {% set via_gateway = request.headers.get('x-stock-picker-gateway') %}
-  <header class="sticky top-0 z-30 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+  <header class="app-header sticky top-0 z-30 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
     <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
       <a href="/" class="flex items-center gap-3 rounded-lg">
         <span class="brand-tile" aria-hidden="true">{{ market.key[:2] | upper }}</span>

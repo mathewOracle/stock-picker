@@ -21,7 +21,7 @@
 {% macro pillar_scores(r) -%}
 <dl class="grid grid-cols-3 gap-2 text-center text-xs">
   {% for key, label in [('fundamental', 'Fund.'), ('technical', 'Tech.'), ('chart', 'Chart')] %}
-  <div class="rounded-xl bg-slate-100 px-2 py-2"><dt class="text-slate-700">{{ label }}</dt><dd class="text-lg leading-tight">{{ score_cell(r.scores[key]) }}</dd></div>
+  <div class="metric-panel px-2 py-2"><dt class="text-slate-700">{{ label }}</dt><dd class="text-lg leading-tight">{{ score_cell(r.scores[key]) }}</dd></div>
   {% endfor %}
 </dl>
 {%- endmacro %}
