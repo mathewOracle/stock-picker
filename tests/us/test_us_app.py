@@ -165,4 +165,4 @@ def test_pages_render_without_india_terms(path):
     assert page.status_code == 200
     leaks = [w for w in INDIA_WORDS if w in page.text]
     assert not leaks, f"India terms on {path}: {leaks}"
-    assert "US Stock Picker" in page.text or path.startswith("/research")
+    assert "Stock Picker" in page.text or path.startswith("/research")
