@@ -116,7 +116,7 @@ BEML COCHINSHIP FORTIS AJANTPHARM NATCOPHARM GLAXO PFIZER ABBOTINDIA SANOFI
 """.split()
 
 MARKET = Market(
-    key="india", app_name="India Stock Picker", short_name="India", exchange="NSE", regulator="SEBI",
+    key="india", app_name="Stock Picker", short_name="India", exchange="NSE", regulator="SEBI",
     clock=Clock(tz=ZoneInfo("Asia/Kolkata"), open=time(9, 15), close=time(15, 30),
                 early_label="Pre-open auction", early_start=time(9, 0)),
     stocks=STOCKS, indices=INDICES, benchmark="^NSEI", benchmark_name="Nifty", vix="^INDIAVIX", vix_name="India VIX",
