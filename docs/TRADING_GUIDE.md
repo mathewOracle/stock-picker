@@ -27,7 +27,7 @@ kill $(lsof -t -nP -iTCP:61287 -sTCP:LISTEN)          # stop
 ```
 
 Then refresh before you look at anything: **Refresh swing data** on the order desk (after 16:00 IST for
-swing), **Refresh intraday** on `/intraday` (during market hours). Port taken? `./serve.sh 61288`.
+swing), **Refresh intraday** on `/intraday` (during market hours). Port taken? `./serve.sh 61297`.
 
 ---
 

@@ -17,8 +17,9 @@
   @media (min-width: 1024px) { html { scroll-padding-bottom: 1rem; } }
   /* color-scheme: native selects, date pickers and scrollbars render dark too */
   html { color-scheme: dark; }
-  body { @apply bg-canvas text-slate-900 antialiased; }
-  /* WCAG 2.4.7 / 2.4.11: the Careers Monitor focus ring, 3px sky with a gap */
+  /* tabular figures: prices and counts line up in columns, as on a trading screen */
+  body { @apply bg-canvas text-slate-900 antialiased; font-variant-numeric: tabular-nums; }
+  /* WCAG 2.4.7 / 2.4.11: a 3px accent focus ring with a gap */
   :focus-visible { outline: 3px solid theme("colors.accent.DEFAULT"); outline-offset: 3px; }
   summary { @apply cursor-pointer; }
   [hidden] { display: none !important; }
@@ -48,7 +49,7 @@
   }
   .btn-sm { @apply min-h-[2.25rem] rounded-lg px-3; }                                   /* 36px */
   .btn-primary { @apply bg-accent text-white shadow-sm hover:bg-accent-pressed; }
-  .btn-dark { @apply bg-accent text-canvas shadow-sm hover:bg-accent-pressed; }   /* the Careers Monitor sky primary action */
+  .btn-dark { @apply bg-accent text-canvas shadow-sm hover:bg-accent-pressed; }   /* the primary action is accent-filled */
   .btn-success { @apply bg-green-700 text-white shadow-sm hover:bg-green-800; }
   .btn-secondary { @apply bg-white text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50; }
   .btn-quiet { @apply text-accent hover:bg-blue-50; }
@@ -96,18 +97,20 @@
   .sheet[open] { animation: sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
   .sheet-handle { @apply mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-300 sm:hidden; }
 
-  /* ---- Careers Monitor status tiles: a status is never colour alone (WCAG 1.4.1): icon shape + word + colour ---- */
-  .tile { @apply flex min-w-0 flex-col gap-1.5 rounded-2xl border-2 bg-white/60 p-4 text-left transition duration-150; }
-  .tile-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-full; }
-  .attention { @apply flex items-center gap-3 overflow-x-auto pb-1; }
-  .attention-chip { @apply flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-xs transition hover:brightness-125; }
-  .brand-tile { @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent to-green-700 text-sm font-black text-canvas; }
+  /* ---- status tiles: a status is never colour alone (WCAG 1.4.1): icon shape + word + colour.
+          A neutral frame, a 4px status rail on the left and a faint status wash (colours: templates/_status.html) ---- */
+  .tile { @apply flex min-w-0 flex-col gap-1.5 rounded-xl border border-l-4 border-slate-200 bg-white bg-gradient-to-br to-transparent p-4 text-left shadow-card transition duration-150; }
+  .tile-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg; }
+  .attention { @apply flex items-center gap-2 overflow-x-auto pb-1; }
+  .attention-chip { @apply flex shrink-0 items-center gap-2 rounded-lg border-l-2 px-2.5 py-1 text-xs transition hover:brightness-125; }
+  /* per-market gradient comes from the template (base.html BRAND) */
+  .brand-tile { @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-sm font-black text-canvas shadow-card; }
 }
 
-/* the live market dot pings while the exchange is open; a critical tile pulses (both off for reduced motion, see base) */
+/* the live market dot pings while the exchange is open; a critical tile's rail glows (both off for reduced motion) */
 @keyframes live-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
 .live-ping { animation: live-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
-@keyframes crit-glow { 0%, 100% { box-shadow: 0 0 0 0 rgb(244 63 94 / 0.55); } 50% { box-shadow: 0 0 0 10px rgb(244 63 94 / 0); } }
+@keyframes crit-glow { 0%, 100% { box-shadow: inset 4px 0 0 0 rgb(244 63 94 / 0), -2px 0 14px -2px rgb(244 63 94 / 0.55); } 50% { box-shadow: -2px 0 22px 0 rgb(244 63 94 / 0.15); } }
 .crit-glow { animation: crit-glow 1.8s ease-in-out infinite; }
 
 @keyframes sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }

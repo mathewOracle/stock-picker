@@ -1,20 +1,20 @@
 {% from "_icons.html" import icon %}
-{# The Careers Monitor status vocabulary, in one place (like its status.ts). A status is never colour alone
-   (WCAG 1.4.1): each has its own icon shape and a word. Colours come from the dark palette in tailwind.config.js. #}
+{# The status vocabulary, in one place. A status is never colour alone (WCAG 1.4.1): each has its own icon shape and
+   a word. rail = the tile's left edge, wash = its faint gradient, pill = icon chips and attention chips. #}
 {% set STATUS = {
-  'crit': {'icon': 'x', 'word': 'Problem', 'text': 'text-red-800', 'ring': 'border-red-600', 'pill': 'bg-red-600/15 text-red-900 ring-1 ring-red-600/60'},
-  'warn': {'icon': 'warn', 'word': 'Caution', 'text': 'text-amber-800', 'ring': 'border-amber-600', 'pill': 'bg-amber-600/15 text-amber-900 ring-1 ring-amber-600/60'},
-  'ok': {'icon': 'check', 'word': 'Good', 'text': 'text-green-800', 'ring': 'border-green-600/70', 'pill': 'bg-green-600/15 text-green-900 ring-1 ring-green-600/50'},
-  'info': {'icon': 'info', 'word': 'Info', 'text': 'text-blue-800', 'ring': 'border-blue-600/60', 'pill': 'bg-blue-600/15 text-blue-900 ring-1 ring-blue-600/50'},
-  'none': {'icon': 'dot', 'word': 'Neutral', 'text': 'text-slate-700', 'ring': 'border-slate-300', 'pill': 'bg-slate-300/40 text-slate-800 ring-1 ring-slate-400'},
+  'crit': {'icon': 'x', 'word': 'Problem', 'text': 'text-red-800', 'rail': 'border-l-red-600', 'wash': 'from-red-600/10', 'pill': 'bg-red-600/15 text-red-900 border-red-600'},
+  'warn': {'icon': 'warn', 'word': 'Caution', 'text': 'text-amber-800', 'rail': 'border-l-amber-600', 'wash': 'from-amber-600/10', 'pill': 'bg-amber-600/15 text-amber-900 border-amber-600'},
+  'ok': {'icon': 'check', 'word': 'Good', 'text': 'text-green-800', 'rail': 'border-l-green-600', 'wash': 'from-green-600/10', 'pill': 'bg-green-600/15 text-green-900 border-green-600'},
+  'info': {'icon': 'info', 'word': 'Info', 'text': 'text-accent', 'rail': 'border-l-accent', 'wash': 'from-accent/10', 'pill': 'bg-accent/15 text-accent-pressed border-accent'},
+  'none': {'icon': 'dot', 'word': 'Neutral', 'text': 'text-slate-700', 'rail': 'border-l-slate-400', 'wash': 'from-slate-300/20', 'pill': 'bg-slate-300/40 text-slate-800 border-slate-400'},
 } %}
 
 {% macro status_icon(status, size='h-4 w-4') -%}{{ icon(STATUS[status].icon, size) }}{%- endmacro %}
 
 {# A summary tile: icon + title + status word always visible; the detail is one tap away on phones, open on desktop
-   (data-desktop-open, static/desk.js). A critical tile pulses (off for reduced motion). #}
+   (data-desktop-open, static/desk.js). A critical tile's rail glows (off for reduced motion). #}
 {% macro tile(status, title, word, headline) -%}{% set s = STATUS[status] %}
-<details data-desktop-open data-status="{{ status }}" class="tile group {{ s.ring }}{{ ' crit-glow' if status == 'crit' }}">
+<details data-desktop-open data-status="{{ status }}" class="tile group {{ s.rail }} {{ s.wash }}{{ ' crit-glow' if status == 'crit' }}">
   <summary class="flex list-none flex-col gap-1.5 [&::-webkit-details-marker]:hidden">
     <span class="flex items-center gap-2">
       <span class="tile-icon {{ s.pill }}">{{ status_icon(status) }}</span>

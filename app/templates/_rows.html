@@ -2,7 +2,7 @@
 {% from "_icons.html" import icon %}
 {# One stock in the left-hand list. Filtering/sorting reads the data-* attributes in the browser (static/desk.js). #}
 
-{% set row_button = "list-row aria-[current=true]:bg-blue-50 aria-[current=true]:shadow-[inset_4px_0_0_#38bdf8]" %}
+{% set row_button = "list-row aria-[current=true]:bg-accent/10 aria-[current=true]:shadow-[inset_4px_0_0_theme(colors.accent.DEFAULT)]" %}
 
 {% macro swing_row(row, selected, oob=false) %}{% set r = row.r %}
 <li id="row-{{ r.symbol }}" {% if oob %}hx-swap-oob="true"{% endif %}

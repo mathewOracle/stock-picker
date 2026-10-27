@@ -14,6 +14,7 @@ dependencies = [
     "scipy",
     "pysentiment2",  # Loughran-McDonald finance dictionary (offline sentiment scorer)
     "exchange_calendars",  # NYSE holidays + half-days (US profile: market phase, T+1 settlement)
+    "httpx",              # app/gateway.py forwards each request to the India or US worker
 ]
 
 [project.optional-dependencies]

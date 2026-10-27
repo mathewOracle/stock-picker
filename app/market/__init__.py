@@ -3,8 +3,9 @@
     STOCK_PICKER_MARKET=india   (default) NSE large caps
     STOCK_PICKER_MARKET=us      NYSE/Nasdaq large caps
 
-One process trades one market: run two servers for both (./serve.sh, ./serve.sh us). Each market has its own data
-directory, research ledgers and forward-test files, so their evidence can never mix.
+One process trades one market. `./serve.sh` runs both behind one port (app/gateway.py: India / US tabs);
+`./serve.sh india` or `./serve.sh us` runs a single market. Each market has its own data directory, research ledgers
+and forward-test files, so their evidence can never mix.
 """
 
 import os
@@ -12,11 +13,12 @@ import os
 from app.market.profile import Market
 
 MARKET_ENV = "STOCK_PICKER_MARKET"
+NAMES = ("india", "us")   # every market, in tab order; the first is the default
 
 
 def load(name: str | None) -> Market:
     """The profile for a market name ('india' when unset); anything unknown is an error, never a silent default."""
-    key = (name or "india").strip().lower()
+    key = (name or NAMES[0]).strip().lower()
     if key == "india":
         from app.market.india import MARKET as india
         return india

@@ -1,6 +1,7 @@
 # Stock Picker (India + US)
 
-One engine, two markets. Pick the market per process with `STOCK_PICKER_MARKET` (or `./serve.sh us`):
+One engine, two markets, one service: `./serve.sh` serves India and US on one port with **India / US tabs** at the
+top. Each market still runs in its own engine process (`STOCK_PICKER_MARKET`), so their data and evidence never mix:
 
 | | India (default) | US |
 |---|---|---|
@@ -10,15 +11,16 @@ One engine, two markets. Pick the market per process with `STOCK_PICKER_MARKET` 
 | Order tickets (dry run) | Angel One SmartAPI bodies | broker-neutral: limit entry + one OCO exit |
 | Rules on every ticket | (none yet) | FINRA PDT, Reg SHO 200/201/203, Reg T, T+1, Rule 612, wash sale: [`docs/us/US_RULES.md`](docs/us/US_RULES.md) |
 | Data / docs | `data/`, `docs/` | `data-us/`, `docs/us/` (evidence never mixes) |
-| Port | 61287 | 61288 |
+| Port | 61287 (both, tabs) or 61287 alone | 61287 (both, tabs) or 61288 alone |
 
 Everything else (analysis, verdict gates, swing and intraday backtests, research ledger, forward test, order desk)
 is the same code. A market is a data-only profile in `app/market/<market>.py`; US research is pre-registered in
 [`docs/us/SWING_RESEARCH_PLAN.md`](docs/us/SWING_RESEARCH_PLAN.md).
 
 ```bash
-./serve.sh                 # India on :61287 (unchanged)
-./serve.sh us              # US on :61288 (both can run at once)
+./serve.sh                 # India + US on :61287, tabs at the top (app/gateway.py)
+./serve.sh india           # India only on :61287
+./serve.sh us              # US only on :61288
 STOCK_PICKER_MARKET=us .venv/bin/python -m app.research all    # US research, same CLI
 ```
 
@@ -62,20 +64,23 @@ uv pip install -e . --group dev
 
 ### 2. Start and stop the service
 
-`serve.sh` starts the app on **http://127.0.0.1:61287**. It sets the corporate proxy for Yahoo Finance and refuses
-to start if the port is already taken.
+`serve.sh` starts the app on **http://127.0.0.1:61287** with both markets: the India / US tabs at the top switch
+market (`/?market=us` does the same, and a cookie remembers your choice). Behind that one port, a small gateway
+(`app/gateway.py`) runs one engine per market as internal workers on 61291 (India) and 61292 (US), starts them with it
+and stops them with it. It sets the corporate proxy for Yahoo Finance and refuses to start if a port is taken.
 
 | What | Command |
 |---|---|
 | Start (foreground; `Ctrl+C` stops it) | `./serve.sh` |
-| Start on another port | `./serve.sh 61288` |
+| Start on another port | `./serve.sh 61297` |
+| One market only | `./serve.sh india` (:61287) or `./serve.sh us` (:61288) |
 | Start in the background, with a log | `nohup ./serve.sh > /tmp/isp_server.log 2>&1 &` |
 | Watch the log | `tail -f /tmp/isp_server.log` |
 | Check it's up (prints `200`) | `curl -s --noproxy '*' -o /dev/null -w "%{http_code}\n" http://127.0.0.1:61287/` |
 | Open it (macOS) | `open http://127.0.0.1:61287` |
 | Stop the background service | `kill $(lsof -t -nP -iTCP:61287 -sTCP:LISTEN)` |
 | Off the corporate network (no proxy) | `HTTPS_PROXY= ./serve.sh` |
-| Without the script | `.venv/bin/uvicorn app.main:app --port 61287` (set `HTTPS_PROXY` yourself on the corp network) |
+| Without the script | `.venv/bin/uvicorn app.gateway:app --port 61287` (both), or `STOCK_PICKER_MARKET=us .venv/bin/uvicorn app.main:app --port 61288` (one); set `HTTPS_PROXY` yourself on the corp network |
 
 ### 3. First run: load the data (in this order)
 
@@ -242,7 +247,7 @@ per-feature information coefficients.
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest          # 268 tests, no network needed (~1.5 min; ML tests are slowest)
+.venv/bin/python -m pytest          # the whole suite, no network needed (~1.5 min; ML tests are slowest)
 node tests/js/position-size.test.js
 ```
 

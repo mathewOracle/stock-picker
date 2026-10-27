@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#020617">
+  <meta name="theme-color" content="#07060d">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Stock Picker">
   <title>{% block title %}{{ market.app_name }}{% endblock %}</title>
@@ -17,14 +17,29 @@
 <body class="min-h-screen">
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:p-3 focus:shadow-card">Skip to content</a>
   {% set session = session_state() %}
-  <header class="sticky top-0 z-30 border-b border-slate-200 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-    <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5">
+  {# each market's own colours: India saffron -> green, US blue -> red (the accent stays violet everywhere) #}
+  {% set BRAND = {'india': 'from-amber-600 to-green-600', 'us': 'from-blue-600 to-red-600'} %}
+  {% set via_gateway = request.headers.get('x-stock-picker-gateway') %}
+  <header class="sticky top-0 z-30 bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
       <a href="/" class="flex items-center gap-3 rounded-lg">
-        <span class="brand-tile" aria-hidden="true">{{ market.key[:2] | upper }}</span>
+        <span class="brand-tile {{ BRAND[market.key] }}" aria-hidden="true">{{ market.key[:2] | upper }}</span>
         <span><span class="block text-base font-bold leading-tight tracking-tight text-slate-900">{{ market.app_name }}</span>
           <span class="hidden text-xs text-slate-600 sm:block">{{ market.exchange }} &middot; Swing &middot; Intraday &middot; Order desk</span></span></a>
+      {% if via_gateway %}
+      {# one service, both markets (app/gateway.py): a full page load, so each market's page is whole and its own #}
+      <nav aria-label="Market" class="order-last w-full md:order-none md:w-auto">
+        <div class="segmented flex w-full md:w-auto">
+          {% for m in market_tabs %}
+          <a href="/?market={{ m.key }}" {% if m.key == market.key %}aria-current="page"{% endif %} class="segment flex-1 justify-center whitespace-nowrap">
+            <span class="grid h-5 w-5 place-items-center rounded-md bg-gradient-to-br {{ BRAND[m.key] }} text-[9px] font-black text-canvas" aria-hidden="true">{{ m.key[:2] | upper }}</span>
+            {{ m.short_name }}<span class="hidden font-normal opacity-80 lg:inline">&middot; {{ m.exchange }}</span></a>
+          {% endfor %}
+        </div>
+      </nav>
+      {% endif %}
       <div class="flex items-center gap-3">
-        {# the Careers Monitor "Streaming" dot: pings while the exchange is open (calendar-aware: holidays, half-days) #}
+        {# live market dot: pings while the exchange is open (calendar-aware: holidays, half-days) #}
         <span class="flex items-center gap-2 text-xs font-medium text-slate-800" title="{{ market.exchange }}: {{ session.label }}">
           <span class="relative flex h-2.5 w-2.5" aria-hidden="true">
             {% if session.open %}<span class="live-ping absolute inline-flex h-full w-full rounded-full bg-green-700"></span>{% endif %}
@@ -38,6 +53,7 @@
         </nav>
       </div>
     </div>
+    <div class="h-px bg-gradient-to-r from-accent/70 via-slate-300 to-transparent" aria-hidden="true"></div>
   </header>
   <main id="main" class="mx-auto max-w-7xl px-4 pb-6 pt-5">{% block content %}{% endblock %}</main>
   <footer class="mx-auto max-w-7xl px-4 {{ 'pb-28' if nav == 'desk' else 'pb-10' }} text-sm text-slate-700 lg:pb-10">

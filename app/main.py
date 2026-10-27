@@ -19,7 +19,7 @@ from app.intraday.checks import MIN_ATR_PCT, MIN_TRADED_VALUE
 from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF
 from app.intraday.setups import PLAYBOOKS
 from app.jobs import RefreshJob
-from app.market import MARKET
+from app.market import MARKET, NAMES as MARKET_NAMES, load as load_market
 from app.research import pipeline, u2
 from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.research.ml import PROBA_GATE
@@ -78,7 +78,8 @@ templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"
                              long_bias=intraday.LONG_BIAS, short_bias=intraday.SHORT_BIAS,
                              max_risk_pct=desk.MAX_RISK_PCT,  # one source for the risk cap: forms and orders agree
                              market=MARKET, accounts=desk.ACCOUNTS, tz_label=intraday.tz_label,
-                             u2_count=len(u2.SYMBOLS), session_state=session_state)
+                             u2_count=len(u2.SYMBOLS), session_state=session_state,
+                             market_tabs=[load_market(name) for name in MARKET_NAMES])
 
 
 # ---------- market overview (the old swing dashboard) ----------

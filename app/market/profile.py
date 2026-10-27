@@ -105,6 +105,7 @@ class Wording:
 class Market:
     key: str
     app_name: str
+    short_name: str              # the market tab: "India", "US"
     exchange: str                # shown in copy: "NSE", "NYSE/Nasdaq"
     regulator: str               # shown in the disclaimer: "SEBI", "SEC/FINRA"
     clock: Clock

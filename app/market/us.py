@@ -99,7 +99,7 @@ class USMarket(Market):
 
 
 MARKET = USMarket(
-    key="us", app_name="US Stock Picker", exchange="NYSE/Nasdaq", regulator="SEC/FINRA",
+    key="us", app_name="US Stock Picker", short_name="US", exchange="NYSE/Nasdaq", regulator="SEC/FINRA",
     clock=Clock(tz=NEW_YORK, open=time(9, 30), close=time(16, 0),
                 early_label="Pre-market (extended hours)", early_start=time(4, 0),
                 overnight_label="Closed (overnight)"),

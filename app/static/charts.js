@@ -2,13 +2,13 @@
 // Shared helpers first; renderCharts = daily swing page, renderIntradayCharts = 5-minute page.
 /* global LightweightCharts */
 
-// The dark Careers Monitor palette (tailwind.config.js): emerald up, rose down, sky entry; one place for every colour.
+// The dark ink palette (tailwind.config.js): emerald up, rose down, sky entry; one place for every colour.
 const COLORS = {
   up: '#34d399', down: '#fb7185', band: '#8b9ab0', level: '#64748b',
   entry: '#38bdf8', stop: '#fb7185', target: '#34d399',
   fast: '#38bdf8', mid: '#a78bfa', slow: '#fb923c', trail: '#2dd4bf',
   upFaint: '#34d39999', downFaint: '#fb718599',
-  surface: '#0f172a', text: '#cbd5e1', grid: '#1e293b', border: '#334155',
+  surface: '#11101b', text: '#cfcde0', grid: '#1e1c33', border: '#3a3852',
 };
 
 function newChart(id, extra = {}) {
