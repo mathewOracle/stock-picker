@@ -1,6 +1,6 @@
 /**
  * Design tokens: a dark trading-terminal theme (slate darks, sky accent, emerald / amber / rose status colours).
- * Gradients stay simple: two stops, sky -> emerald (.accent-gradient, .brand-tile in input.css). Tailwind scans the templates and scripts for class names; component
+ * Gradients stay simple: two stops, aqua -> emerald (.accent-gradient, .brand-tile in input.css). Tailwind scans the templates and scripts for class names; component
  * classes live in app/static/src/input.css.
  *
  * How the dark theme works without touching ~600 class names in the templates: every scale below runs from
@@ -18,7 +18,7 @@ module.exports = {
       colors: {
         white: "#0f172a",                                    // the card surface (slate-900)
         canvas: "#020617",                                   // page background (slate-950)
-        accent: { DEFAULT: "#38bdf8", pressed: "#7dd3fc" },  // sky-400: 8.6:1 on the surface; text on it is dark
+        accent: { DEFAULT: "#14b8a6", pressed: "#2dd4bf" },  // deep aqua: strong action colour; text on it is dark
         //            50         100        200        300        400        500        600        700        800        900        950
         slate: scale(["#131d33", "#1a2540", "#243049", "#334155", "#64748b", "#8b9ab0", "#a3b1c6", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc"]),
         green: scale(["#0b2a24", "#0f3b30", "#065f46", "#047857", "#059669", "#10b981", "#22c58f", "#34d399", "#6ee7b7", "#a7f3d0", "#d1fae5"]),
