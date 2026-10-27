@@ -44,21 +44,31 @@
 
 @layer components {
   /* ---- surfaces ---- */
+  /* 2.5D surfaces: raised, but never skewed. Trading data stays flat and scannable. */
   .card {
-    @apply rounded-2xl bg-white shadow-card;
-    background-image: linear-gradient(145deg, rgb(30 41 59 / 0.58), rgb(15 23 42 / 0.18) 48%, transparent);
+    @apply relative overflow-hidden rounded-2xl bg-white shadow-card;
+    background-image: linear-gradient(145deg, rgb(30 41 59 / 0.7), rgb(15 23 42 / 0.22) 48%, transparent);
+    box-shadow: 0 8px 20px rgb(0 0 0 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -1px 0 rgb(0 0 0 / 0.22);
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
   }
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(56 189 248 / 0.42), rgb(45 212 191 / 0.28), transparent);
+    pointer-events: none;
+  }
   .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 26px rgb(0 0 0 / 0.28), 0 0 0 1px rgb(56 189 248 / 0.14);
+    transform: translateY(-3px);
+    box-shadow: 0 16px 34px rgb(0 0 0 / 0.3), 0 0 0 1px rgb(20 184 166 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.1);
   }
   .card-pad { @apply p-4 sm:p-5; }
   .app-header { box-shadow: 0 8px 30px rgb(0 0 0 / 0.16); }
   .metric-panel {
     @apply rounded-xl bg-slate-50 p-3;
-    background-image: linear-gradient(135deg, rgb(56 189 248 / 0.08), rgb(14 165 233 / 0.045));
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045);
+    background-image: linear-gradient(135deg, rgb(56 189 248 / 0.1), rgb(14 165 233 / 0.045));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -2px 4px rgb(0 0 0 / 0.16);
   }
   .notice { @apply rounded-2xl border-l-4 p-4 text-sm shadow-card; }
   .eyebrow { @apply text-xs font-semibold uppercase tracking-wide text-slate-600; }   /* grouped-list section label */
@@ -132,10 +142,17 @@
   /* ---- status tiles: a status is never colour alone (WCAG 1.4.1): icon shape + word + colour.
           A neutral frame, a 4px status rail on the left and a faint status wash (colours: templates/_status.html) ---- */
   .tile {
-    @apply flex min-w-0 flex-col gap-1.5 rounded-xl border border-l-4 border-slate-200 bg-white bg-gradient-to-br to-transparent p-4 text-left shadow-card transition duration-150;
-    box-shadow: 0 5px 16px rgb(0 0 0 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.045);
+    @apply relative flex min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border border-l-4 border-slate-200 bg-white bg-gradient-to-br to-transparent p-4 text-left shadow-card transition duration-150;
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -1px 0 rgb(0 0 0 / 0.2);
   }
-  .tile:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgb(0 0 0 / 0.25), inset 0 1px 0 rgb(255 255 255 / 0.06); }
+  .tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, rgb(255 255 255 / 0.035), transparent 30%);
+    pointer-events: none;
+  }
+  .tile:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgb(0 0 0 / 0.28), inset 0 1px 0 rgb(255 255 255 / 0.1); }
   .tile-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg; }
   .attention { @apply flex items-center gap-2 overflow-x-auto pb-1; }
   .attention-chip { @apply flex shrink-0 items-center gap-2 rounded-lg border-l-2 px-2.5 py-1 text-xs transition hover:brightness-125; }
