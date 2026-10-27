@@ -24,7 +24,7 @@
     /* Quiet colour in the room: depth without turning the dashboard into a neon aquarium. */
     background-image:
       radial-gradient(900px 420px at 8% -12%, rgb(56 189 248 / 0.12), transparent 68%),
-      radial-gradient(760px 380px at 92% 2%, rgb(16 185 129 / 0.08), transparent 70%),
+      radial-gradient(760px 380px at 92% 2%, rgb(14 165 233 / 0.07), transparent 70%),
       linear-gradient(180deg, rgb(15 23 42 / 0.34), transparent 24rem);
     background-attachment: fixed;
   }
@@ -57,7 +57,7 @@
   .app-header { box-shadow: 0 8px 30px rgb(0 0 0 / 0.16); }
   .metric-panel {
     @apply rounded-xl bg-slate-50 p-3;
-    background-image: linear-gradient(135deg, rgb(56 189 248 / 0.08), rgb(16 185 129 / 0.045));
+    background-image: linear-gradient(135deg, rgb(56 189 248 / 0.08), rgb(14 165 233 / 0.045));
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045);
   }
   .notice { @apply rounded-2xl border-l-4 p-4 text-sm shadow-card; }
@@ -108,7 +108,7 @@
     position: relative;
   }
   .list-row:hover { box-shadow: inset 0 0 0 1px rgb(56 189 248 / 0.12); }
-  .list-row[aria-current="true"] { background-image: linear-gradient(90deg, rgb(56 189 248 / 0.14), rgb(16 185 129 / 0.05)); }
+  .list-row[aria-current="true"] { background-image: linear-gradient(90deg, rgb(56 189 248 / 0.14), rgb(14 165 233 / 0.05)); }
   .meter { box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35); }
   .avatar { @apply grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-xs font-bold text-slate-700; }
   .pill { @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold; }
@@ -139,10 +139,10 @@
   .tile-icon { @apply grid h-8 w-8 shrink-0 place-items-center rounded-lg; }
   .attention { @apply flex items-center gap-2 overflow-x-auto pb-1; }
   .attention-chip { @apply flex shrink-0 items-center gap-2 rounded-lg border-l-2 px-2.5 py-1 text-xs transition hover:brightness-125; }
-  /* the two accents in one simple gradient, aqua -> emerald, for every market (the letters say which market).
-     Green stays decorative or "buy" in meaning: buttons and selected states keep sky, so green still reads as "good". */
-  .brand-tile { @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent to-green-700 text-sm font-black text-canvas shadow-card; }
-  .accent-gradient { @apply bg-gradient-to-r from-accent to-green-700; }
+  /* the primary accent in one simple gradient, aqua -> blue, for every market (the letters say which market).
+     Green is reserved for semantic "good / buy" meaning; it is not used as a surface colour. */
+  .brand-tile { @apply grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-accent to-blue-700 text-sm font-black text-canvas shadow-card; }
+  .accent-gradient { @apply bg-gradient-to-r from-accent to-blue-700; }
 }
 
 /* the live market dot pings while the exchange is open; a critical tile's rail glows (both off for reduced motion) */

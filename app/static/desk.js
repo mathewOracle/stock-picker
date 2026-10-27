@@ -38,7 +38,7 @@
       bar.style.width = `${Number.isNaN(value) ? item.dataset.barDefault : value}%`;
       if ('short' in item.dataset) {   // intraday rows: green for buy intensity, red for short intensity
         bar.classList.toggle('bg-red-700', key === 'short');
-        bar.classList.toggle('bg-green-700', key !== 'short');
+        bar.classList.toggle('bg-accent', key !== 'short');
       }
     });
   }
