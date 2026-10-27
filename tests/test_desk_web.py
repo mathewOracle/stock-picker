@@ -55,7 +55,7 @@ def test_home_is_the_order_desk_with_two_tabs_and_research_is_not_a_tab():
 @needs_cache
 def test_intraday_tab_has_buy_and_short_intensity_rank_buttons():
     html = client.get("/?tab=intraday").text
-    assert 'id="intraday-list"' in html and 'data-sort="-quality"' in html and 'data-sort="-short"' in html
+    assert 'id="intraday-list"' in html and 'data-sort="-qualitybuy"' in html and 'data-sort="-qualityshort"' in html
     assert 'hx-get="/research/intraday"' in html and "Refresh intraday data" in html and "Long-leaning" in html
 
 
@@ -96,7 +96,9 @@ def test_swing_list_is_ranked_by_buy_intensity_best_first():
 def test_intraday_list_follows_the_rank_choice():
     buy = numbers(client.get("/?tab=intraday&rank=long").text, "buy")
     short = numbers(client.get("/?tab=intraday&rank=short").text, "short")
-    assert buy == sorted(buy, reverse=True) and short == sorted(short, reverse=True)
+    buy_quality = numbers(client.get("/?tab=intraday&rank=long").text, "qualitybuy")
+    short_quality = numbers(client.get("/?tab=intraday&rank=short").text, "qualityshort")
+    assert buy_quality == sorted(buy_quality, reverse=True) and short_quality == sorted(short_quality, reverse=True)
     assert 'aria-pressed="true"' in client.get("/?tab=intraday&rank=short").text
 
 

@@ -7,7 +7,10 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
-  const stateFor = (list) => (states[list.id] ??= { filters: {}, query: '', sort: list.dataset.defaultSort });
+  const stateFor = (list) => (states[list.id] ??= {
+    filters: {}, query: '', sort: list.dataset.defaultSort,
+    barKey: list.dataset.defaultSort === '-qualityshort' ? 'short' : 'buy',
+  });
 
   // numbers compare as numbers, everything else as text; `direction` is +1 or -1
   const compare = (key, direction) => (a, b) => {
@@ -55,7 +58,7 @@
     });
     const [direction, key] = [state.sort.startsWith('-') ? -1 : 1, state.sort.slice(1)];
     items.sort(compare(key, direction)).forEach((item) => list.appendChild(item));
-    paintBars(items, key);
+    paintBars(items, state.barKey === 'short' ? 'short' : 'buy');
     syncControls(list, state, shown, items.length);
   }
 
@@ -128,8 +131,10 @@
     if (!list) return;
     const state = stateFor(list);
     if (button.dataset.filter) state.filters[button.dataset.filter] = button.dataset.value;
-    else if (button.dataset.sort) state.sort = button.dataset.sort;
-    else return;
+    else if (button.dataset.sort) {
+      state.sort = button.dataset.sort;
+      if (button.dataset.barKey) state.barKey = button.dataset.barKey;
+    } else return;
     apply(list);
   });
 

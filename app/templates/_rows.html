@@ -30,7 +30,7 @@
 {% macro intraday_row(row, selected, rank, oob=false) %}{% set r = row.r %}{% set sn = r.snapshot %}
 <li id="row-{{ r.symbol }}" {% if oob %}hx-swap-oob="true"{% endif %}
     data-name="{{ (r.name ~ ' ' ~ r.symbol) | lower }}" data-kind="{{ row.kind }}" data-lean="{{ row.lean }}"
-    data-buy="{{ row.buy | round(1) }}" data-short="{{ row.short | round(1) }}" data-quality="{{ row.quality | round(1) }}" data-bar-default="{{ row.buy | round(1) }}">
+    data-buy="{{ row.buy | round(1) }}" data-short="{{ row.short | round(1) }}" data-qualitybuy="{{ (row.qualitybuy | default(0)) | round(1) }}" data-qualityshort="{{ (row.qualityshort | default(0)) | round(1) }}" data-bar-default="{{ row.buy | round(1) }}">
   <button type="button" hx-get="/detail?tab=intraday&amp;symbol={{ r.symbol | urlencode }}" hx-target="#detail" hx-push-url="/?tab=intraday&amp;symbol={{ r.symbol | urlencode }}"
           {% if selected and selected.symbol == r.symbol %}aria-current="true"{% endif %} class="{{ row_button }}">
     <span class="avatar" aria-hidden="true">{{ r.symbol[:2] }}</span>

@@ -157,7 +157,10 @@ def intraday_rows(scan, rank: str = "quality") -> list[dict]:
     """Every stock, quality-first by default; explicit long/short ranks remain available for tape views."""
     rows = [{"r": r, "buy": r.scores["bias"], "short": 100 - r.scores["bias"], "kind": intraday_kind(r.verdict),
              "lean": lean(r.scores["bias"]), "quality": intraday_quality(r)} for r in scan.reports]
-    key = "buy" if rank == "long" else "short" if rank == "short" else "quality"
+    # Quality is the primary key in both modes; the selected intensity breaks ties.
+    key = "qualitybuy" if rank == "long" else "qualityshort"
+    for row in rows:
+        row[key] = row["quality"] * 1000.0 + row["buy" if rank == "long" else "short"]
     return sorted(rows, key=lambda row: -row[key])
 
 
