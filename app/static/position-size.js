@@ -6,7 +6,7 @@ function positionSize(capital, riskPct, entry, stop) {
   const riskQty = perShare > 0 ? Math.floor((capital * riskPct) / 100 / perShare) : 0;
   const affordable = entry > 0 ? Math.floor(capital / entry) : 0;  // no leverage assumed
   const qty = Math.min(riskQty, affordable);
-  return { qty, riskQty, capped: riskQty > affordable, rupeesAtRisk: Math.round(qty * perShare) };
+  return { qty, riskQty, capped: riskQty > affordable, moneyAtRisk: Math.round(qty * perShare) };
 }
 
 if (typeof document !== 'undefined') {
@@ -23,7 +23,7 @@ if (typeof document !== 'undefined') {
         // say *why* the number is what it is: silent caps look like bugs
         out.textContent = size.capped
           ? `${size.qty} (capital-capped; risk allows ${size.riskQty})`
-          : `${size.qty} (risk Rs ${size.rupeesAtRisk.toLocaleString('en-IN')})`;
+          : `${size.qty} (risk ${form.dataset.currency || ''}${size.moneyAtRisk.toLocaleString(form.dataset.locale || undefined)})`;
       });
     };
     form.addEventListener('input', update);

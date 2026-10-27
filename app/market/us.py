@@ -101,7 +101,8 @@ class USMarket(Market):
 MARKET = USMarket(
     key="us", app_name="US Stock Picker", exchange="NYSE/Nasdaq", regulator="SEC/FINRA",
     clock=Clock(tz=NEW_YORK, open=time(9, 30), close=time(16, 0),
-                early_label="Pre-market (extended hours)", early_start=time(4, 0)),
+                early_label="Pre-market (extended hours)", early_start=time(4, 0),
+                overnight_label="Closed (overnight)"),
     stocks=STOCKS, indices=INDICES, benchmark="^GSPC", benchmark_name="S&P 500", vix="^VIX", vix_name="VIX",
     money=Money("$", 1e6, "M", steps=((1e12, "T"), (1e9, "B"), (1e6, "M"))),
     # $0 commission at most US brokers; the cost is half-spread + slippage (~3-4 bp on mega caps at a 5-minute bar

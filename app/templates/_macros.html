@@ -93,7 +93,8 @@
 {# Position sizer: fills every [data-qty] inside an element carrying data-entry / data-stop (static/position-size.js) #}
 {% macro sizer_form() -%}
 {# Risk is capped at 1% because that is what the server enforces when it builds an order: the form must not promise more #}
-<form id="sizer" class="grid max-w-md grid-cols-2 gap-3 text-sm" aria-label="Position size calculator" onsubmit="return false">
+<form id="sizer" class="grid max-w-md grid-cols-2 gap-3 text-sm" aria-label="Position size calculator" onsubmit="return false"
+      data-currency="{{ market.money.symbol }}" data-locale="{{ market.money.locale }}">
   <label><span class="label">Capital ({{ market.money.symbol }})</span>
     <input name="capital" type="number" inputmode="numeric" min="0" step="1000" value="100000" class="field"></label>
   <label><span class="label">Risk per trade (%, max {{ max_risk_pct | num(0) }})</span>

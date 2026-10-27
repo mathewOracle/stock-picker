@@ -1,4 +1,31 @@
-# India Stock Picker
+# Stock Picker (India + US)
+
+One engine, two markets. Pick the market per process with `STOCK_PICKER_MARKET` (or `./serve.sh us`):
+
+| | India (default) | US |
+|---|---|---|
+| Universe | ~63 NSE large caps, benchmark Nifty 50 | 78 NYSE/Nasdaq large caps, benchmark S&P 500 |
+| Hours | 09:15-15:30 IST | 09:30-16:00 ET, NYSE holidays + half-days (exchange_calendars), DST-aware |
+| Costs per side | 0.15% swing / 0.06% intraday | 0.05% both (spread, slippage, SEC/FINRA fees) |
+| Order tickets (dry run) | Angel One SmartAPI bodies | broker-neutral: limit entry + one OCO exit |
+| Rules on every ticket | (none yet) | FINRA PDT, Reg SHO 200/201/203, Reg T, T+1, Rule 612, wash sale: [`docs/us/US_RULES.md`](docs/us/US_RULES.md) |
+| Data / docs | `data/`, `docs/` | `data-us/`, `docs/us/` (evidence never mixes) |
+| Port | 61287 | 61288 |
+
+Everything else (analysis, verdict gates, swing and intraday backtests, research ledger, forward test, order desk)
+is the same code. A market is a data-only profile in `app/market/<market>.py`; US research is pre-registered in
+[`docs/us/SWING_RESEARCH_PLAN.md`](docs/us/SWING_RESEARCH_PLAN.md).
+
+```bash
+./serve.sh                 # India on :61287 (unchanged)
+./serve.sh us              # US on :61288 (both can run at once)
+STOCK_PICKER_MARKET=us .venv/bin/python -m app.research all    # US research, same CLI
+```
+
+The rest of this README describes the engine with India examples; every India-specific number above has a US
+counterpart in `app/market/us.py`.
+
+## India Stock Picker
 
 Two tools in one app for ~63 large-cap NSE stocks:
 

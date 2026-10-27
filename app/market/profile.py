@@ -28,6 +28,7 @@ class Clock:
     opening_range_minutes: int = 15
     last_entry_before_close: int = 45   # no new intraday entries this many minutes before the close
     square_off_before_close: int = 15   # our own intraday time exit, this many minutes before the close
+    overnight_label: str = "Pre-market"  # before early_start (US: closed overnight, nothing trades before 04:00)
 
     @property
     def opening_range_end(self) -> time:
@@ -67,6 +68,7 @@ class Money:
     big_divisor: float           # 1e7 (crore), 1e6 (million): the unit traded-value metrics are stored in
     big_label: str               # "Cr", "M"
     steps: tuple[tuple[float, str], ...] = ()   # US: T/B/M, three significant figures; empty = always big_label
+    locale: str = "en-US"        # number grouping in the browser: en-IN writes 1,00,000
 
     def big(self, value: float) -> str:
         """A large amount in the market's habitual unit: ₹1,234 Cr / $3.90T, $452B, $25.0M."""

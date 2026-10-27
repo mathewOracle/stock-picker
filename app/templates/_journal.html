@@ -1,6 +1,6 @@
 <section id="journal" {% if oob %}hx-swap-oob="true"{% endif %} aria-labelledby="jr-h" class="card card-pad mb-6">
   <h2 id="jr-h" class="text-lg font-bold tracking-tight">Dry-run order journal</h2>
-  <p class="text-xs text-slate-700">Newest first. Kept in <code>data/broker/orders.jsonl</code>, which git ignores. Nothing here reached a broker.</p>
+  <p class="text-xs text-slate-700">Newest first. Kept in <code>{{ market.data_subdir }}/broker/orders.jsonl</code>, which git ignores. Nothing here reached a broker.</p>
   {% if orders %}
   <div class="mt-2 overflow-x-auto">
     <table class="w-full text-left text-sm">

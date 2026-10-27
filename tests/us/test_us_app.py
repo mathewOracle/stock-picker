@@ -49,6 +49,7 @@ def test_engine_constants_come_from_the_us_profile():
     (datetime(2026, 11, 27, 12, 0), "Open: trading window", True),                   # half-day, before its cutoff
     (datetime(2026, 11, 27, 12, 20), "Open: no new entries (square-off time)", False),  # 12:15 = 13:00 - 45 min
     (datetime(2026, 11, 27, 13, 5), "Closed", False),                                # the half-day is over
+    (datetime(2026, 11, 24, 1, 45), "Closed (overnight)", False),
     (datetime(2026, 11, 24, 7, 0), "Pre-market (extended hours)", False),
     (datetime(2026, 11, 24, 9, 40), "Opening range forming", False),
     (datetime(2026, 11, 24, 15, 20), "Open: no new entries (square-off time)", False),
@@ -155,7 +156,7 @@ def test_restricted_list_blocks_the_symbol():
 
 # ---------- the pages speak US ----------
 
-INDIA_WORDS = ("Nifty", "NSE", " IST", "₹", "Angel One", "SEBI", " Cr<", " Cr ", ".NS")
+INDIA_WORDS = ("Nifty", "NSE", "Rs ", " IST", "₹", "Angel One", "SEBI", " Cr<", " Cr ", ".NS")
 
 
 @pytest.mark.parametrize("path", ["/", "/?tab=intraday", "/research/swing", "/research/intraday"])

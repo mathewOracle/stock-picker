@@ -91,7 +91,7 @@ def market_phase(now: datetime) -> tuple[str, bool, bool]:
         return "Closed (holiday)", False, False
     t = now.time()
     if t < MARKET.clock.early_start:
-        return "Pre-market", False, False
+        return MARKET.clock.overnight_label, False, False
     if t < hours.open:
         return MARKET.clock.early_label, False, False
     if t < OPENING_RANGE_END:

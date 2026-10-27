@@ -120,7 +120,7 @@ MARKET = Market(
     clock=Clock(tz=ZoneInfo("Asia/Kolkata"), open=time(9, 15), close=time(15, 30),
                 early_label="Pre-open auction", early_start=time(9, 0)),
     stocks=STOCKS, indices=INDICES, benchmark="^NSEI", benchmark_name="Nifty", vix="^INDIAVIX", vix_name="India VIX",
-    money=Money("₹", 1e7, "Cr"),
+    money=Money("₹", 1e7, "Cr", locale="en-IN"),
     swing_cost_per_side=0.0015,     # brokerage + STT + stamp + slippage, deliberately conservative
     intraday_cost_per_side=0.0006,  # brokerage + STT + exchange fees + GST + stamp + slippage, NSE intraday, large caps
     min_traded_value=100,           # Rs crore/day: below this, spreads/impact costs eat intraday edges

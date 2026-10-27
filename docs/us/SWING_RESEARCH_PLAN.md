@@ -58,3 +58,32 @@ also survive **double** cost.
 
 The US trading rules (FINRA pattern day trader, Reg SHO Rules 200/201/203, Reg T, T+1 settlement, Rule 612,
 wash sales) are enforced by app/rules/us.py on every ticket regardless of any backtest result. See docs/us/US_RULES.md.
+
+---
+
+# Results (each run once, 2026-10-27, after the pre-registration commit 4b3dbdc; nothing was changed afterwards)
+
+Data: Yahoo Finance, 78 US large caps (U1) + 210 of 216 U2 candidates (BK and MMC not returned), daily bars
+2017-2026, 60 sessions of 5-minute bars (all Yahoo keeps).
+
+1. **Swing ledger backtest: PRE-REGISTERED TEST FAILED.** 35,178 weekly evaluations, 2017-11-08 to 2026-10-23.
+   Buy: n=4,033, avg +0.56% vs control +0.60%, edge -0.03%, t -0.31. Strong Buy: n=2,521, edge +0.01%, t 0.08.
+   Both halves of the period show no edge (t -0.55 and -0.05). 0 of 78 stocks pass individually.
+   Same conclusion as India: the verdict rules do not beat the average of all evaluations.
+2. **Momentum/price families (discovery period, to 2021-12-31): no family passed, on U1 or on U2.**
+   Best on U1: M1 12-1 momentum, net excess +0.13%, t 0.31. Best on U2: M5 one-month reversal, net +0.06%, t 0.19.
+   M3 (52-week-high) and M4 (low volatility) were negative on U2 (t -2.08, t -1.73). As pre-registered, validation
+   and confirmation stay closed. This is a cross-market failure of the India lead: momentum did not replicate in the
+   US discovery period.
+3. **Intraday backtest: 0 of 14 (playbook, side) pairs supported** (needed t >= 2.69). 5,788 trades over 60 sessions;
+   13 of 14 have a negative average after costs; best is gap_fill:Short at +0.04% (t 0.29). 60 sessions is short,
+   so "not supported" means "no evidence", not "proved useless".
+4. **Forward test:** first rebalance recorded for 2026-10-26 (210 eligible U2 stocks) in
+   `docs/us/forward/momentum_picks.csv`. Verdict only after 15 completed periods (about 15 months). Interim numbers
+   are never a reason to stop or change anything.
+
+## What this means for the US app (per the outcomes table above)
+
+Nothing passed, so the US app stays *information first*: no stock is shown as a validated Buy, no intraday setup is
+tradeable, and the order desk refuses tickets. That is the correct behaviour. The infrastructure (rules, tickets,
+research) is ready for the day evidence appears; it does not manufacture any.
