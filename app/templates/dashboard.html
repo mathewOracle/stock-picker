@@ -129,7 +129,7 @@
     <p>Every stock runs through three independent analyses. Each check scores from -1 to +1, weighted, and each pillar maps to 0-100 (50 = neutral).</p>
     <ul class="list-disc pl-5">
       <li><strong>Fundamental ({{ (weights.fundamental * 100) | int }}%)</strong>: ROE, 3-year revenue &amp; EPS CAGR, margin trend, debt/equity, interest cover, cash conversion, free cash flow, Piotroski F-score, P/E vs sector peers, PEG, forward P/E, analyst consensus.</li>
-      <li><strong>Technical ({{ (weights.technical * 100) | int }}%)</strong>: 200-DMA trend, moving-average stack, golden/death cross, ADX, Supertrend, RSI, MACD, Stochastic, Bollinger %B, on-balance volume, volume surges, relative strength vs Nifty.</li>
+      <li><strong>Technical ({{ (weights.technical * 100) | int }}%)</strong>: 200-DMA trend, moving-average stack, golden/death cross, ADX, Supertrend, RSI, MACD, Stochastic, Bollinger %B, on-balance volume, volume surges, relative strength vs {{ market.benchmark_name }}.</li>
       <li><strong>Chart ({{ (weights.chart * 100) | int }}%)</strong>: swing structure (higher highs/lows), 60-day regression channel, 52-week breakouts, support/resistance, Bollinger squeeze, pullback setups, double tops/bottoms, candlestick patterns, RSI divergence.</li>
     </ul>
     <p><strong>Buy</strong> needs composite &ge; {{ gates.Buy.composite }}, fundamental &ge; {{ gates.Buy.fundamental }}, technical &ge; {{ gates.Buy.technical }}, chart &ge; {{ gates.Buy.chart }}, reward/risk &ge; {{ gates.Buy.reward_risk }} and no hard red flags (falling knife, loss-making, high leverage, weak Piotroski).

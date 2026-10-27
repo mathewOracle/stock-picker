@@ -7,7 +7,7 @@ entry here is harmless. The U2 list is FROZEN (docs/SWING_RESEARCH_PLAN.md, Adde
 from datetime import time
 from zoneinfo import ZoneInfo
 
-from app.market.profile import Clock, Market, Money, News
+from app.market.profile import Clock, Market, Money, News, Wording
 
 STOCKS: dict[str, str] = {
     "RELIANCE.NS": "Reliance Industries",
@@ -128,4 +128,12 @@ MARKET = Market(
               aliases=NEWS_ALIASES),
     u2_candidates=tuple(f"{c}.NS" for c in U2_CANDIDATES),
     broker_name="Angel One", symbol_suffix=".NS",
+    wording=Wording(intraday_product="intraday (MIS) product", swing_product="the delivery (CNC) product",
+                    swing_exit_order="a GTT OCO order (good-till-triggered, one-cancels-the-other)",
+                    swing_exit_why="A plain stop-loss order expires every evening; a GTT doesn't.",
+                    adviser="a SEBI-registered adviser", costs_detail="brokerage, STT, slippage",
+                    forward_why=("Momentum was the only lead in all of this research (it passed 2017-21 on stocks outside "
+                                 "this app's list, then fell short in 2022-24), and those backtests are flattered by "
+                                 "survivorship bias."),
+                    forward_rules="Addendum B of docs/SWING_RESEARCH_PLAN.md"),
 )

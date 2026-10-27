@@ -13,6 +13,7 @@ from app import analysis, data
 from app.broker import desk
 from app.intraday import analysis as intraday
 from app.intraday.indicators import SQUARE_OFF
+from app.market import MARKET
 from app.research import signal_record
 from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.scoring import BUY_LEVELS
@@ -77,21 +78,26 @@ def report_for(symbol: str, tab: str):
     return report
 
 
-def draft(symbol: str, mode: str, capital: float, risk: float, qty: int | None, report=None) -> desk.Draft:
+def now() -> datetime:
+    """The exchange's clock: "one order per day" and the US rule windows are the exchange's days, not this laptop's."""
+    return datetime.now(MARKET.clock.tz)
+
+
+def draft(symbol: str, mode: str, capital: float, risk: float, qty: int | None, report=None, account: str = "") -> desk.Draft:
     report = report or report_for(symbol, mode)
     ref = desk.swing_reference(symbol) if mode == "swing" else desk.intraday_reference(report)
-    return desk.build_draft(mode, symbol, report, ref, capital, risk, qty)
+    return desk.build_draft(mode, symbol, report, ref, capital, risk, qty, account=account, now=now())
 
 
 def order_card(symbol: str, mode: str, report) -> dict:
     if mode == "swing":
-        extra = {"title": f"Swing order (delivery, up to {SWING_MAX_HOLD} sessions)", "plan": report.plan, "why": report.blockers}
+        extra = {"title": f"Swing order (long only, up to {SWING_MAX_HOLD} sessions)", "plan": report.plan, "why": report.blockers}
     else:
         extra = {"title": f"Intraday order (same day, flat by {SQUARE_OFF:%H:%M})",
                  "plan": report.best.plan if report.best else None, "why": [report.reason]}
     fresh = symbol_freshness(symbol, mode)
     return {"mode": mode, "verdict": report.verdict, "draft": draft(symbol, mode, DESK_CAPITAL, DESK_RISK, None, report),
-            "recorded": desk.recorded_today(mode, symbol, datetime.now()), "blocked": fresh["why"], **extra}
+            "recorded": desk.recorded_today(mode, symbol, now()), "blocked": fresh["why"], **extra}
 
 
 # ---------- signals ----------

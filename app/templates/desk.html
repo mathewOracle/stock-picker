@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% from "_macros.html" import sizer_form %}
-{% block title %}Order desk - India Stock Picker{% endblock %}
+{% block title %}Order desk - {{ market.app_name }}{% endblock %}
 {% block content %}
 {# phones: the tab name below is the visible large title, so the page title is for screen readers only #}
 <div class="lg:mb-4">
   <h1 class="sr-only lg:not-sr-only lg:text-3xl lg:font-bold lg:tracking-tight">Order desk</h1>
   <p class="mt-1 hidden max-w-3xl text-sm text-slate-700 lg:block">Pick a stock, see every signal behind its verdict and the evidence for it, then review an order ticket.
-    Orders are a <strong>dry run</strong>: the exact Angel One requests are written to a local journal, and <strong>nothing is sent to a broker</strong>.</p>
+    Orders are a <strong>dry run</strong>: the exact {{ market.broker_name }} requests are written to a local journal, and <strong>nothing is sent to a broker</strong>.</p>
 </div>
 
 <div id="desk">{% include "_desk.html" %}</div>

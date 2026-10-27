@@ -27,6 +27,7 @@ from app.intraday.indicators import LAST_ENTRY_BAR, OPENING_RANGE_END, SQUARE_OF
 from app.intraday.setups import PLAYBOOKS, detect_setups
 from app.intraday.snapshot import assemble
 from app.market.profile import shift
+from app.rules import intraday_block   # market rules (US Rule 201): never count a trade the desk would refuse
 from app.universe import STOCKS
 
 LOOKBACK_SESSIONS = 5        # what Yahoo's 5-day view gives the live scanner
@@ -118,7 +119,7 @@ def replay_symbol(symbol: str, raw: pd.DataFrame, only_after: str | None = None,
                 continue
             for setup in detect_setups(snap):
                 key = (setup.playbook.key, setup.side)
-                if key in seen or setup.plan.reward_risk < MIN_RR:
+                if key in seen or setup.plan.reward_risk < MIN_RR or intraday_block(snap.bars, setup.side):
                     continue
                 seen.add(key)
                 result = simulate(window[today_mask], rel, setup.side, *levels(setup))

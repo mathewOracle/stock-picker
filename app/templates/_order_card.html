@@ -25,7 +25,7 @@
           class="btn btn-success mt-4 w-full sm:w-auto">Place order&hellip;</button>
   {% else %}
   <button type="button" disabled class="btn mt-4 w-full bg-slate-200 text-slate-700 sm:w-auto">Place order</button>
-  <p class="mt-2 text-sm"><strong>Why not:</strong> {{ c.blocked or d.ticket.skip }}</p>
+  <p class="mt-2 text-sm"><strong>Why not:</strong> {{ c.blocked or d.why_not }}</p>
   {% if c.why and not c.blocked %}<p class="text-xs text-slate-600">Waiting for: {{ c.why | join('; ') }}</p>{% endif %}
   {% endif %}
   <p class="mt-3 text-xs text-slate-600">Dry run only: the desk never overrides the verdict, and nothing is sent to a broker.</p>

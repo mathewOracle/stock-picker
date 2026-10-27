@@ -41,7 +41,7 @@ def test_buy_gets_a_full_ticket_sized_by_risk():
     d = draft()
     assert d.can_place and d.side == "BUY"
     assert d.max_qty == d.qty == 200          # Rs 1,000 risk / Rs 5 per share
-    assert d.rupees_at_risk == pytest.approx(1000)
+    assert d.money_at_risk == pytest.approx(1000)
     assert len(d.ticket.exits) == 2 and d.ticket.entry["producttype"] == "DELIVERY"
 
 

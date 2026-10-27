@@ -1,33 +1,47 @@
-{% set e = d.ticket.entry %}
-{% set query = {'symbol': d.symbol, 'mode': d.mode, 'capital': capital, 'risk': d.risk_pct, 'qty': d.qty} %}
-<h2 id="ticket-title" class="text-xl font-bold tracking-tight">Review order: {{ d.mode | capitalize }} &middot; {{ d.symbol | replace('.NS', '') }}</h2>
+{% from "_macros.html" import rule_checks %}
+{% set e = d.ticket.entry %}{% set lg = d.ticket.legs %}
+{% set query = {'symbol': d.symbol, 'mode': d.mode, 'capital': capital, 'risk': d.risk_pct, 'qty': d.qty, 'account': d.account} %}
+<h2 id="ticket-title" class="text-xl font-bold tracking-tight">Review order: {{ d.mode | capitalize }} &middot; {{ d.symbol | short_symbol }}</h2>
 <p class="notice mt-3 border-amber-600 bg-amber-50 text-amber-950"><strong>Dry run.</strong> Confirming records this order in the journal.
-  <strong>Nothing is sent to Angel One.</strong></p>
+  <strong>Nothing is sent to {{ market.broker_label }}.</strong></p>
+
+{% if accounts and lg %}
+<div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+  <label for="ticket-account" class="font-semibold">Account type</label>
+  <select id="ticket-account" name="account" class="field w-auto" hx-get="/desk/ticket?{{ {'symbol': d.symbol, 'mode': d.mode} | urlencode }}"
+          hx-include="#sizer, #ticket-qty, this" hx-trigger="change" hx-target="#ticket-body">
+    {% for a in accounts %}<option value="{{ a }}" {{ 'selected' if a == d.account }}>{{ a | capitalize }}</option>{% endfor %}
+  </select>
+  <span class="text-xs text-slate-700">The rules below depend on it (pattern day trader, shorting, settled cash).</span>
+</div>
+{% endif %}
 
 {% if not d.can_place %}
-<p role="alert" class="notice mt-3 border-red-700 bg-red-50 text-red-950"><strong>Can't place this order:</strong> {{ d.ticket.skip }}</p>
-{% else %}
+<p role="alert" class="notice mt-3 border-red-700 bg-red-50 text-red-950"><strong>Can't place this order:</strong> {{ d.why_not }}</p>
+{% endif %}
+{% if lg %}
 <dl class="mt-4 grid grid-cols-1 gap-x-4 rounded-2xl bg-slate-50 p-4 text-sm sm:grid-cols-[auto_1fr] sm:gap-y-2.5 [&>dd]:mb-3 sm:[&>dd]:mb-0 [&>dt]:text-xs sm:[&>dt]:text-sm">
   <dt class="text-slate-700">Side and product</dt>
-  <dd class="font-semibold">{{ e.transactiontype }} &middot; {{ e.producttype }} &middot; {{ e.ordertype }} (day)</dd>
+  <dd class="font-semibold">{{ d.ticket.product }}</dd>
   <dt class="text-slate-700"><label for="ticket-qty">Quantity</label></dt>
   <dd><input id="ticket-qty" name="qty" type="number" min="1" max="{{ d.max_qty }}" value="{{ d.qty }}"
              hx-get="/desk/ticket?{{ {'symbol': d.symbol, 'mode': d.mode} | urlencode }}" hx-include="#sizer, this" hx-trigger="change" hx-target="#ticket-body"
              inputmode="numeric" class="field inline-block w-28">
       <span class="text-xs text-slate-700">of at most {{ d.max_qty }} (risk {{ d.risk_pct | num(1) }}% of {{ capital | num(0) }})</span></dd>
   <dt class="text-slate-700">Entry limit</dt>
-  <dd><strong>{{ e.price }}</strong> <span class="text-xs text-slate-700">(a marketable limit, 0.5% beyond {{ d.ref_price | num(2) }}, the {{ d.ref_label }})</span></dd>
+  <dd><strong>{{ lg.entry }}</strong> <span class="text-xs text-slate-700">(a marketable limit, 0.5% beyond {{ d.ref_price | num(2) }}, the {{ d.ref_label }})</span></dd>
   <dt class="text-slate-700">Stop-loss</dt>
-  <dd class="text-red-800">trigger <strong>{{ d.ticket.exits[0].triggerprice }}</strong>, limit {{ d.ticket.exits[0].price }}</dd>
+  <dd class="text-red-800">trigger <strong>{{ lg.stop_trigger }}</strong>, limit {{ lg.stop_limit }}</dd>
   <dt class="text-slate-700">Target (T1)</dt>
-  <dd class="text-green-800">limit <strong>{{ d.ticket.exits[1].price }}</strong></dd>
+  <dd class="text-green-800">limit <strong>{{ lg.target }}</strong></dd>
   <dt class="text-slate-700">Most you lose if stopped</dt>
-  <dd><strong>&#8377;{{ d.rupees_at_risk | num(0) }}</strong> <span class="text-xs text-slate-700">before costs; a gap through the stop loses more</span></dd>
+  <dd><strong>{{ market.money.symbol }}{{ d.money_at_risk | num(0) }}</strong> <span class="text-xs text-slate-700">before costs; a gap through the stop loses more</span></dd>
   <dt class="text-slate-700">Time exit</dt><dd>{{ d.ticket.time_exit }}</dd>
 </dl>
-<p class="mt-2 text-xs text-slate-700">{% if d.mode == 'swing' %}The two exits are GTT rules, created straight after the entry fills.{% else %}The two exits are orders, sent only after the entry is confirmed filled.{% endif %}
+<p class="mt-2 text-xs text-slate-700">{{ d.ticket.exits_note }}
   Exits use the printed stop and target, never levels recomputed from your fill.</p>
 {% endif %}
+{{ rule_checks(d.checks, market.regulator) }}
 
 {% if d.notes %}
 <ul class="notice mt-3 list-disc space-y-1 border-amber-600 bg-amber-50 pl-8 text-amber-950" aria-label="Notes">{% for n in d.notes %}<li>{{ n }}</li>{% endfor %}</ul>
@@ -35,7 +49,7 @@
 
 {% if d.can_place %}
 <details class="mt-3 rounded-2xl bg-slate-50 p-3 text-sm">
-  <summary class="cursor-pointer font-semibold">Exact Angel One request bodies</summary>
+  <summary class="cursor-pointer font-semibold">Exact {{ market.broker_name }} request bodies</summary>
   <pre class="mt-2 max-h-64 overflow-auto rounded-xl bg-slate-900 p-3 text-xs text-slate-100">{{ {'entry': e, 'exits': d.ticket.exits | list} | tojson(indent=2) }}</pre>
 </details>
 {% endif %}

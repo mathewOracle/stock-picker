@@ -5,7 +5,7 @@
 <div class="mb-4 lg:mb-5">
 {% call banner('border-green-700 bg-green-50 text-green-950' if st and st.is_open else 'border-slate-500 bg-white', ('Market: ' ~ st.phase ~ '.') if st else 'No intraday data yet.') %}
   {% if st %}{{ st.note }} Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '-' }}
-  &middot; Nifty today {{ delta(st.index_change) }} &middot; no new entries after {{ no_new_entries }}; every trade is closed by {{ square_off }}.{% endif %}
+  &middot; {{ market.benchmark_name }} today {{ delta(st.index_change) }} &middot; no new entries after {{ no_new_entries }}; every trade is closed by {{ square_off }}.{% endif %}
 {% endcall %}
 </div>
 

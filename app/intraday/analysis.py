@@ -17,6 +17,7 @@ from app.intraday.setups import COUNTER_TREND, Setup, detect_setups
 from app.intraday.snapshot import Snapshot, build_snapshot
 from app.market import MARKET
 from app.market.profile import shift
+from app.rules import intraday_block
 from app.signals import Signal, score
 from app.universe import BENCHMARK, STOCKS
 
@@ -190,7 +191,10 @@ def decide(report: IntradayReport, status: MarketStatus, evidence: dict | None =
     if not valid:
         why = "fights the intraday bias" if not aligned else f"reward/risk below {MIN_RR}"
         return "No trade", f"{report.setups[0].playbook.name} found, but it {why}", None
-    best = max(valid, key=lambda s: (setup_evidence(evidence, s)["status"] == "supported", s.plan.reward_risk))
+    allowed = [s for s in valid if not intraday_block(report.snapshot.bars, s.side)]   # market rules, e.g. US Rule 201
+    if not allowed:
+        return "No trade", f"{valid[0].playbook.name} found, but {intraday_block(report.snapshot.bars, valid[0].side)}", None
+    best = max(allowed, key=lambda s: (setup_evidence(evidence, s)["status"] == "supported", s.plan.reward_risk))
     if _too_late(report, status):
         return "No trade", f"Signal after {NO_NEW_ENTRIES:%H:%M}: no new entries (the backtest never opens a trade this late)", best
     block = setup_evidence(evidence, best)

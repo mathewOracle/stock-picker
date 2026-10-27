@@ -14,7 +14,7 @@
     <span class="avatar" aria-hidden="true">{{ r.symbol[:2] }}</span>
     <span class="min-w-0 flex-1">
       <span class="flex items-center justify-between gap-2"><span class="truncate font-semibold">{{ r.name }}</span>{{ badge(r.verdict) }}</span>
-      <span class="mt-0.5 block truncate text-xs text-slate-600">{{ r.symbol | replace('.NS', '') }} &middot; {{ r.metrics.sector }}</span>
+      <span class="mt-0.5 block truncate text-xs text-slate-600">{{ r.symbol | short_symbol }} &middot; {{ r.metrics.sector }}</span>
       <span class="mt-1.5 flex items-center gap-2">
         <span class="meter" aria-hidden="true"><span data-bar class="absolute inset-y-0 left-0 rounded-full bg-slate-800" style="width: {{ row.intensity | round(1) }}%"></span></span>
         <span class="w-7 text-right text-sm font-bold tabular-nums" title="Buy intensity (composite score)">{{ row.intensity | round | int }}</span>

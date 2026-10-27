@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from app.market.profile import Clock, Market, Money, News, Session
+from app.market.profile import Clock, Market, Money, News, Session, Wording
 
 NEW_YORK = ZoneInfo("America/New_York")
 
@@ -103,7 +103,7 @@ MARKET = USMarket(
     clock=Clock(tz=NEW_YORK, open=time(9, 30), close=time(16, 0),
                 early_label="Pre-market (extended hours)", early_start=time(4, 0)),
     stocks=STOCKS, indices=INDICES, benchmark="^GSPC", benchmark_name="S&P 500", vix="^VIX", vix_name="VIX",
-    money=Money("$", 1e6, "M"),
+    money=Money("$", 1e6, "M", steps=((1e12, "T"), (1e9, "B"), (1e6, "M"))),
     # $0 commission at most US brokers; the cost is half-spread + slippage (~3-4 bp on mega caps at a 5-minute bar
     # open) plus the SEC Section 31 and FINRA TAF sell-side fees (< 0.3 bp combined). 5 bp a side is deliberately high.
     swing_cost_per_side=0.0005,
@@ -113,5 +113,15 @@ MARKET = USMarket(
               aliases=NEWS_ALIASES),
     u2_candidates=tuple(U2_CANDIDATES),
     broker_name="broker-neutral",
+    wording=Wording(intraday_product="a regular-session day order (no extended hours)",
+                    swing_product="a regular-session day order",
+                    swing_exit_order="a GTC OCO order (good-'til-cancelled, one-cancels-the-other)",
+                    swing_exit_why="A day stop expires every evening; a GTC one doesn't (most brokers cancel GTC after 60-180 days).",
+                    adviser="an SEC-registered investment adviser (check them on adviserinfo.sec.gov)",
+                    costs_detail="half-spread, slippage, SEC Section 31 and FINRA TAF sell fees; $0 commission assumed",
+                    forward_why=("Momentum is the most replicated price anomaly in US data (Jegadeesh &amp; Titman, 1993), "
+                                 "but every backtest of it is flattered by survivorship bias and by years of being known."),
+                    forward_rules="docs/us/SWING_RESEARCH_PLAN.md",
+                    short_verb="sell short"),
     data_subdir="data-us", docs_subdir="docs/us", default_port=61288,
 )

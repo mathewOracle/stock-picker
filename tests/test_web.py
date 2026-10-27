@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app import data, main
 from app.data import RefreshResult
 from app.jobs import RefreshJob
-from app.main import app, crore, pct, pe
+from app.main import app, money_big, pct, pe
 
 client = TestClient(app)
 needs_cache = pytest.mark.skipif(data.last_refresh() is None, reason="run a refresh first")
@@ -16,7 +16,8 @@ def test_formatters_handle_nan_and_loss():
     assert pct(float("nan")) == "–"
     assert pct(0.1234) == "+12.3%"
     assert pe(1000.0) == "loss"
-    assert crore(None) == "–"
+    assert money_big(None) == "–"
+    assert money_big(1.5e11) == "₹15,000 Cr"   # India profile (the default market)
 
 
 def test_unknown_symbol_is_404():

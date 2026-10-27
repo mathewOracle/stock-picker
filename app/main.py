@@ -19,14 +19,15 @@ from app.intraday.checks import MIN_ATR_PCT, MIN_TRADED_VALUE
 from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF
 from app.intraday.setups import PLAYBOOKS
 from app.jobs import RefreshJob
-from app.research import pipeline
+from app.market import MARKET
+from app.research import pipeline, u2
 from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.research.ml import PROBA_GATE
 from app.scoring import BUY_LEVELS, GATES, PILLAR_WEIGHTS, VERDICTS, WATCHLIST
 from app.universe import STOCKS
 
 BASE = Path(__file__).resolve().parent
-app = FastAPI(title="India Stock Picker")
+app = FastAPI(title=MARKET.app_name)
 app.add_middleware(GZipMiddleware, minimum_size=1024)  # stock pages carry ~140 KB of chart JSON
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
@@ -50,20 +51,28 @@ def pe(value) -> str:
     return "loss" if not _is_nan(value) and value >= 1000 else num(value)
 
 
-def crore(value) -> str:
-    return "–" if _is_nan(value) else f"₹{value / 1e7:,.0f} Cr"
+def money_big(value) -> str:
+    """A large amount (market cap) in the market's habitual unit: ₹1,234 Cr / $1,234M."""
+    return "–" if _is_nan(value) else MARKET.money.big(value)
+
+
+def money_units(value) -> str:
+    """An amount already in big units (the traded-value metric)."""
+    return "–" if _is_nan(value) else MARKET.money.big_units(value)
 
 
 def timestamp(value) -> str:
     return "never" if value is None else datetime.fromtimestamp(value).strftime("%d %b %Y, %H:%M")
 
 
-templates.env.filters.update(pct=pct, num=num, pe=pe, crore=crore, timestamp=timestamp,
-                              evidence_note=intraday.describe_evidence)
+templates.env.filters.update(pct=pct, num=num, pe=pe, money_big=money_big, money_units=money_units, timestamp=timestamp,
+                              short_symbol=MARKET.short_symbol, evidence_note=intraday.describe_evidence)
 templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}",
                              swing_max_hold=SWING_MAX_HOLD,  # the swing backtest's time exit, in sessions
                              long_bias=intraday.LONG_BIAS, short_bias=intraday.SHORT_BIAS,
-                             max_risk_pct=desk.MAX_RISK_PCT)  # one source for the risk cap: forms and orders agree
+                             max_risk_pct=desk.MAX_RISK_PCT,  # one source for the risk cap: forms and orders agree
+                             market=MARKET, accounts=desk.ACCOUNTS, tz_label=intraday.tz_label,
+                             u2_count=len(u2.SYMBOLS))
 
 
 # ---------- market overview (the old swing dashboard) ----------
@@ -187,9 +196,9 @@ def desk_reanalyse(request: Request, tab: Mode, symbol: str):
 
 @app.get("/desk/ticket", response_class=HTMLResponse)
 def desk_ticket(request: Request, symbol: str, mode: Mode, capital: float = deskview.DESK_CAPITAL, risk: float = deskview.DESK_RISK,
-                qty: int | None = None):
+                qty: int | None = None, account: str = ""):
     try:
-        draft = deskview.draft(symbol, mode, capital, risk, qty)
+        draft = deskview.draft(symbol, mode, capital, risk, qty, account=account)
     except deskview.NoAnalysis as exc:
         raise HTTPException(404, str(exc))
     return templates.TemplateResponse(request, "_ticket.html", {"d": draft, "capital": capital})
@@ -197,13 +206,13 @@ def desk_ticket(request: Request, symbol: str, mode: Mode, capital: float = desk
 
 @app.post("/desk/order", response_class=HTMLResponse)
 def desk_order(request: Request, symbol: str, mode: Mode, capital: float = deskview.DESK_CAPITAL, risk: float = deskview.DESK_RISK,
-               qty: int | None = None):
+               qty: int | None = None, account: str = ""):
     _require_htmx(request)
     ctx = {"orders": None, "row": None, "error": ""}
     try:
         if (fresh := deskview.symbol_freshness(symbol, mode))["stale"]:   # never build an order on old prices
             raise desk.OrderRefused(fresh["why"])
-        ctx["row"] = desk.record(deskview.draft(symbol, mode, capital, risk, qty), datetime.now())
+        ctx["row"] = desk.record(deskview.draft(symbol, mode, capital, risk, qty, account=account), deskview.now())
     except deskview.NoAnalysis as exc:
         raise HTTPException(404, str(exc))
     except desk.OrderRefused as exc:   # 200 on purpose: htmx does not swap 4xx responses

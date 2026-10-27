@@ -5,7 +5,7 @@
   <ul class="mt-2 list-disc pl-5 text-sm">
     <li><strong>No lookahead:</strong> every past decision uses only data up to that day; trades enter at the <em>next</em> day's open; if stop and target are both hit in a day we assume the stop. A test proves cutting off the future changes nothing.</li>
     <li><strong>Control group:</strong> the rules must beat the average of <em>all</em> evaluations (not just zero), so a rising market doesn't count as skill.</li>
-    <li><strong>Costs:</strong> 0.15% per side (brokerage, STT, slippage) is charged on every trade.</li>
+    <li><strong>Costs:</strong> {{ '%.2f' | format(market.swing_cost_per_side * 100) }}% per side ({{ market.wording.costs_detail }}) is charged on every trade.</li>
     <li><strong>Pass rules fixed up front</strong> (30+ trades, t-stat of 1.65 or more) and never adjusted after seeing results. The recent-years window below is shown for context only: choosing a window after the fact would be data snooping.</li>
     <li><strong>Permanent, append-only history:</strong> the ledger keeps every past evaluation; only new dates and still-open trades are computed. If Yahoo restates a stock's prices, only that stock is replayed.</li>
     <li><strong>Fundamentals are not backtested:</strong> Yahoo only keeps 4-5 years of statements, so replaying today's numbers into 2018 would be cheating.</li>
@@ -153,11 +153,11 @@
 
 {# ---------------- forward test ---------------- #}
 <section aria-labelledby="fw-h" class="mb-6">
-  <h2 id="fw-h" class="mb-2 text-lg font-bold">Forward test: momentum on 158 other NSE stocks</h2>
-  <p class="mb-2 text-sm text-slate-800">Momentum was the only lead in all of this research (it passed 2017-21 on stocks outside this app's list, then fell short in 2022-24), and those backtests are flattered by survivorship bias. So it is being tested the only clean way: <strong>picks are recorded before the future exists</strong>, in an append-only file kept in git (<span class="font-mono">docs/forward/momentum_picks.csv</span>), then scored once they play out.
-    Every 20 sessions the top fifth by each ranking is bought at the next open and compared with holding all of them equally, after 0.15% per side on new entries. The verdict is computed <strong>once</strong>, at {{ fw.verdict_periods if fw else 15 }} completed periods (about 15 months), with the same pass rule as before. Rules: Addendum B of <span class="font-mono">docs/SWING_RESEARCH_PLAN.md</span>.</p>
+  <h2 id="fw-h" class="mb-2 text-lg font-bold">Forward test: momentum on {{ u2_count }} other {{ market.exchange }} stocks</h2>
+  <p class="mb-2 text-sm text-slate-800">{{ market.wording.forward_why | safe }} So it is being tested the only clean way: <strong>picks are recorded before the future exists</strong>, in an append-only file kept in git (<span class="font-mono">{{ market.docs_subdir }}/forward/momentum_picks.csv</span>), then scored once they play out.
+    Every 20 sessions the top fifth by each ranking is bought at the next open and compared with holding all of them equally, after {{ '%.2f' | format(market.swing_cost_per_side * 100) }}% per side on new entries. The verdict is computed <strong>once</strong>, at {{ fw.verdict_periods if fw else 15 }} completed periods (about 15 months), with the same pass rule as before. Rules: <span class="font-mono">{{ market.wording.forward_rules }}</span>.</p>
   {% if not fw %}
-  <p class="rounded border border-slate-300 bg-white p-4">Not run yet. Press <strong>Run research</strong> (or <span class="font-mono">python -m app.research forward</span>) after 16:00 IST on a trading day to record the first picks.</p>
+  <p class="rounded border border-slate-300 bg-white p-4">Not run yet. Press <strong>Run research</strong> (or <span class="font-mono">python -m app.research forward</span>) after {{ market.clock.settled_after.strftime('%H:%M') }} {{ tz_label() }} on a trading day to record the first picks.</p>
   {% else %}
   <p class="mb-2 rounded border border-slate-300 bg-white p-3 text-sm" role="status"><strong>Last run:</strong> {{ fw.note }}{% if fw.missing %} Not returned by Yahoo: {{ fw.missing | length }} stocks.{% endif %}</p>
   {% if fw.current %}

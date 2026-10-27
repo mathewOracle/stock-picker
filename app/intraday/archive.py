@@ -102,7 +102,7 @@ def refresh(progress=data._no_progress) -> ArchiveResult:
 
 
 def refresh_symbol(symbol: str) -> RefreshResult:
-    """Re-analyse ONE stock intraday: its last 5 sessions of 5-minute bars (plus Nifty), merged into the archive."""
+    """Re-analyse ONE stock intraday: its last 5 sessions of 5-minute bars (plus the benchmark index), merged into the archive."""
     if symbol not in STOCKS:
         raise ValueError(f"unknown stock {symbol!r}")
     refreshed = data.refresh_intraday(symbols=[symbol, BENCHMARK])

@@ -64,18 +64,39 @@ class News:
 @dataclass(frozen=True)
 class Money:
     symbol: str                  # "₹", "$"
-    big_divisor: float           # 1e7 (crore), 1e6 (million)
+    big_divisor: float           # 1e7 (crore), 1e6 (million): the unit traded-value metrics are stored in
     big_label: str               # "Cr", "M"
+    steps: tuple[tuple[float, str], ...] = ()   # US: T/B/M, three significant figures; empty = always big_label
 
     def big(self, value: float) -> str:
-        """A large amount in the market's habitual unit: ₹1,234 Cr / $1,234M."""
+        """A large amount in the market's habitual unit: ₹1,234 Cr / $3.90T, $452B, $25.0M."""
+        if self.steps:
+            size, label = next(((s, lb) for s, lb in self.steps if abs(value) >= s), self.steps[-1])
+            n = value / size
+            return f"{self.symbol}{n:,.{2 if abs(n) < 10 else 1 if abs(n) < 100 else 0}f}{label}"
         sep = " " if len(self.big_label) > 1 else ""
         return f"{self.symbol}{value / self.big_divisor:,.0f}{sep}{self.big_label}"
 
     def big_units(self, value: float) -> str:
         """An amount ALREADY in big units (e.g. a traded-value metric)."""
+        if self.steps:
+            return self.big(value * self.big_divisor)
         sep = " " if len(self.big_label) > 1 else ""
         return f"{self.symbol}{value:,.0f}{sep}{self.big_label}"
+
+
+@dataclass(frozen=True)
+class Wording:
+    """How this market's brokers name the order types the entry/exit steps describe."""
+    intraday_product: str        # "intraday (MIS) product"
+    swing_product: str           # "the delivery (CNC) product"
+    swing_exit_order: str        # "a GTT OCO order (good-till-triggered, one-cancels-the-other)"
+    swing_exit_why: str          # why that order type and not a plain stop
+    adviser: str                 # who to talk to before investing, in this jurisdiction
+    costs_detail: str            # what the per-side cost assumption covers
+    forward_why: str             # why momentum is forward-tested in this market (research narrative, HTML-safe)
+    forward_rules: str           # where its pre-registered rules live
+    short_verb: str = "short-sell"
 
 
 @dataclass(frozen=True)
@@ -98,6 +119,7 @@ class Market:
     news: News
     u2_candidates: tuple[str, ...]   # the forward test's independent universe (frozen per market)
     broker_name: str             # whose order format the dry-run tickets use
+    wording: Wording
     symbol_suffix: str = ""      # Yahoo suffix hidden in the UI (".NS")
     data_subdir: str = "data"
     docs_subdir: str = "docs"
@@ -113,6 +135,11 @@ class Market:
 
     def short_symbol(self, symbol: str) -> str:
         return symbol.removesuffix(self.symbol_suffix) if self.symbol_suffix else symbol
+
+    @property
+    def broker_label(self) -> str:
+        """Who the dry run is NOT sending to, in a sentence: a named broker, or 'a broker' while none is chosen."""
+        return "a broker" if self.broker_name == "broker-neutral" else self.broker_name
 
     def session(self, day: date) -> Session | None:
         """The day's hours, or None if the exchange is shut. Default: regular hours Mon-Fri (holidays unknown)."""

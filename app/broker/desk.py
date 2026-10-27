@@ -1,24 +1,37 @@
 """Order desk: turn the app's validated plan into a ticket, and record it. DRY RUN ONLY.
 
-Nothing here talks to a broker. "Placing" an order writes the exact Angel One request bodies to a local journal,
-so you can read, rehearse and audit them. Sending them is a separate, deliberate step (docs/ANGELONE_ORDERS.md, section 6:
-credentials from the environment, 1-share test, order-book reconciliation, kill switch).
+Nothing here talks to a broker. "Placing" an order writes the exact request bodies of the market's broker format
+(India: Angel One, docs/ANGELONE_ORDERS.md; US: broker-neutral, app/broker/neutral.py) to a local journal, so you can
+read, rehearse and audit them. Sending them is a separate, deliberate step (credentials from the environment, 1-share
+test, order-book reconciliation, kill switch).
+
+Market rules (app/rules: US PDT, Reg SHO, T+1/good-faith, wash sale...) are judged on every draft; any `block`
+check means the ticket cannot be placed and record() refuses it, whatever the browser sends.
 
 The browser never supplies order bodies. It sends symbol, mode, capital, risk and (optionally) a smaller quantity;
 the ticket is rebuilt here from the server's own plan, so a doctored form cannot change a price, a side or a size.
 """
 
 import json
+import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from app import data
-from app.broker.angelone import Instrument, Ticket, instrument, intraday_ticket, position_size, swing_ticket
+from app.broker import angelone, neutral
+from app.broker.angelone import Instrument, instrument
+from app.broker.tickets import Ticket, position_size
+from app.market import MARKET
+from app.research.backtest import MAX_HOLD
+from app.rules import Check, DeskContext, accounts, blocking, desk_checks, intraday_block
 
 BROKER_DIR = data.DB_PATH.parent / "broker"
 JOURNAL = BROKER_DIR / "orders.jsonl"
-SCRIP_MASTER = BROKER_DIR / "scrip_master.json"   # Angel One's public OpenAPIScripMaster.json, downloaded on a personal network
+SCRIP_MASTER = BROKER_DIR / "scrip_master.json"   # India: Angel One's public OpenAPIScripMaster.json, downloaded on a personal network
+RESTRICTED = BROKER_DIR / "restricted.txt"        # symbols you may not trade (employer pre-clearance, insider lists), one per line
+BROKER = neutral if MARKET.key == "us" else angelone   # the ticket format for this market
+ACCOUNTS = accounts()                             # account types the ticket asks about ('' where no rule depends on it)
 MAX_RISK_PCT = 1.0                                # docs/ANGELONE_ORDERS.md section 6: risk per trade <= 1%
 PLACEHOLDER_TICK = Decimal("0.05")
 MODES = ("swing", "intraday")
@@ -42,18 +55,35 @@ class Draft:
     stop: float
     risk_pct: float
     notes: tuple[str, ...] = field(default_factory=tuple)
+    checks: tuple[Check, ...] = field(default_factory=tuple)
+    account: str = ""
+
+    @property
+    def blocked_by(self) -> Check | None:
+        return blocking(self.checks)
 
     @property
     def can_place(self) -> bool:
-        return self.ticket.entry is not None
+        return self.ticket.entry is not None and self.blocked_by is None
+
+    @property
+    def why_not(self) -> str:
+        """One sentence for the disabled button: the ticket's own skip reason, else the blocking rule."""
+        if self.ticket.entry is None:
+            return self.ticket.skip
+        return f"{self.blocked_by.rule}: {self.blocked_by.message}" if self.blocked_by else ""
 
     @property
     def side(self) -> str:
-        return self.ticket.entry["transactiontype"] if self.ticket.entry else ""
+        return self.ticket.legs.side if self.ticket.legs else ""
 
     @property
-    def rupees_at_risk(self) -> float:
-        return 0.0 if not self.can_place else self.qty * abs(self.ref_price - self.stop)
+    def notional(self) -> float:
+        return self.qty * self.ref_price if self.ref_price == self.ref_price else 0.0
+
+    @property
+    def money_at_risk(self) -> float:
+        return 0.0 if self.ticket.entry is None else self.qty * abs(self.ref_price - self.stop)
 
 
 # ---------- instrument lookup ----------
@@ -84,6 +114,32 @@ def load_instrument(symbol: str) -> tuple[Instrument, bool, str]:
     return Instrument(symbol.removesuffix(".NS") + "-EQ", "UNKNOWN", PLACEHOLDER_TICK), False, note
 
 
+def _instrument(symbol: str, ref_price: float):
+    return neutral.instrument(symbol, ref_price) if BROKER is neutral else load_instrument(symbol)
+
+
+def restricted() -> frozenset[str]:
+    if not RESTRICTED.exists():
+        return frozenset()
+    return frozenset(line.strip().upper() for line in RESTRICTED.read_text().splitlines()
+                     if line.strip() and not line.lstrip().startswith("#"))
+
+
+def _earnings(report) -> date | None:
+    ts = (getattr(report, "metrics", None) or {}).get("earnings_ts")
+    try:
+        return datetime.fromtimestamp(float(ts), MARKET.clock.tz).date() if ts and math.isfinite(float(ts)) else None
+    except (TypeError, ValueError, OSError):
+        return None
+
+
+def _rule201(mode: str, report) -> bool | None:
+    if mode != "intraday":
+        return None
+    bars = getattr(getattr(report, "snapshot", None), "bars", None)
+    return None if bars is None else bool(intraday_block(bars, "Short"))
+
+
 # ---------- reference prices ----------
 
 def swing_reference(symbol: str) -> tuple[float, str]:
@@ -102,10 +158,12 @@ def intraday_reference(report) -> tuple[float, str]:
 # ---------- drafting ----------
 
 def build_draft(mode: str, symbol: str, report, ref: tuple[float, str], capital: float, risk_pct: float,
-                qty: int | None = None, inst: tuple[Instrument, bool, str] | None = None) -> Draft:
+                qty: int | None = None, inst: tuple[Instrument, bool, str] | None = None, account: str = "",
+                now: datetime | None = None) -> Draft:
     """`report` is the StockReport (swing) or IntradayReport (intraday). qty may only shrink the sized quantity."""
     if mode not in MODES:
         raise ValueError(f"unknown mode {mode!r}")
+    account = account if account in ACCOUNTS else (ACCOUNTS[0] if ACCOUNTS else "")
     notes = []
     ref_price, ref_label = ref
     risk = min(max(risk_pct, 0.0), MAX_RISK_PCT)
@@ -117,13 +175,19 @@ def build_draft(mode: str, symbol: str, report, ref: tuple[float, str], capital:
     final_qty = max_qty if qty is None else max(1, min(qty, max_qty)) if max_qty else 0
     if qty is not None and qty > max_qty:
         notes.append(f"Quantity limited to {max_qty}: more would break the {risk:g}% risk rule or exceed your capital.")
-    chosen = inst or load_instrument(symbol)
+    chosen = inst or _instrument(symbol, ref_price)
     instrument_, verified, inst_note = chosen
     if inst_note:
         notes.append(inst_note)
-    ticket = (swing_ticket if mode == "swing" else intraday_ticket)(report, instrument_, final_qty, ref_price)
+    ticket = (BROKER.swing_ticket if mode == "swing" else BROKER.intraday_ticket)(report, instrument_, final_qty, ref_price)
+    checks = ()
+    if ticket.legs is not None:   # rules judge a real order only; a skipped ticket already says why
+        ctx = DeskContext(mode, symbol, ticket.legs.direction, final_qty, ref_price, account, capital,
+                          (now or datetime.now(MARKET.clock.tz)).astimezone(MARKET.clock.tz), tuple(_read_journal()),
+                          _earnings(report) if mode == "swing" else None, MAX_HOLD, _rule201(mode, report), restricted())
+        checks = tuple(desk_checks(ctx))
     return Draft(mode, symbol, ticket, instrument_, verified, final_qty, max_qty, ref_price, ref_label, stop, risk,
-                 tuple(notes))
+                 tuple(notes), checks, account)
 
 
 # ---------- journal ----------
@@ -151,7 +215,7 @@ def recorded_today(mode: str, symbol: str, now: datetime) -> dict | None:
 def record(draft: Draft, now: datetime) -> dict:
     """Append the ticket to the journal (dry run). One order per mode, symbol and day: never a silent duplicate."""
     if not draft.can_place:
-        raise OrderRefused(draft.ticket.skip or "nothing to place")
+        raise OrderRefused(draft.why_not or "nothing to place")
     key = _key(draft.mode, draft.symbol, now)
     existing = _read_journal()
     if recorded_today(draft.mode, draft.symbol, now):
@@ -160,7 +224,11 @@ def record(draft: Draft, now: datetime) -> dict:
     row = {"id": len(existing) + 1, "key": key, "at": now.isoformat(timespec="seconds"), "dry_run": True,
            "mode": draft.mode, "symbol": draft.symbol, "qty": draft.qty, "side": draft.side,
            "instrument_verified": draft.instrument_verified, "entry": draft.ticket.entry,
-           "exits": list(draft.ticket.exits), "time_exit": draft.ticket.time_exit}
+           "exits": list(draft.ticket.exits), "time_exit": draft.ticket.time_exit,
+           "notional": round(draft.notional, 2)}
+    if draft.account:   # markets whose rules depend on it (US: PDT counts margin day trades, cash needs settled funds)
+        row["account"] = draft.account
+        row["checks"] = [{"rule": c.rule, "status": c.status} for c in draft.checks]
     BROKER_DIR.mkdir(parents=True, exist_ok=True)
     with JOURNAL.open("a") as handle:
         handle.write(json.dumps(row) + "\n")

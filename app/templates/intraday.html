@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import delta, intraday_badge, refresh_button, score_cell, evidence_badge, trade_math_line, entry_exit_steps, sizer_form %}
-{% block title %}Intraday - India Stock Picker{% endblock %}
+{% block title %}Intraday - {{ market.app_name }}{% endblock %}
 {% block content %}
 <p class="mb-3"><a href="/" class="text-blue-800 underline">&larr; Back to the order desk</a></p>
 {% set st = scan.status %}
@@ -23,8 +23,8 @@
   <h2 id="mkt-h" class="text-lg font-bold">Market: {{ st.phase }}</h2>
   <p>{{ st.note }}</p>
   <p class="mt-1 text-sm">Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '–' }}
-    &middot; Nifty today {{ delta(st.index_change) }}
-    &middot; Hours 09:15-15:30 IST; no new entries after {{ no_new_entries }}; every trade is closed the same day, by {{ square_off }} at the latest (before the broker's auto square-off).</p>
+    &middot; {{ market.benchmark_name }} today {{ delta(st.index_change) }}
+    &middot; Hours {{ market.clock.open.strftime('%H:%M') }}-{{ market.clock.close.strftime('%H:%M') }} {{ tz_label() }}{{ ' (NYSE holidays and half-days known)' if market.knows_holidays }}; no new entries after {{ no_new_entries }}; every trade is closed the same day, by {{ square_off }} at the latest (before the broker's auto square-off).</p>
 </section>
 
 {# ---- active setups + position sizing ---- #}
@@ -156,14 +156,14 @@
         <div><dt class="font-semibold">Previous-day high/low</dt><dd>Breaking yesterday's extremes expands the range and triggers stops.</dd></div>
         <div><dt class="font-semibold">EMA 9/21, RSI(14), Supertrend on 5-minute bars</dt><dd>Short-term momentum, overbought/oversold, and a trailing-stop trend filter.</dd></div>
         <div><dt class="font-semibold">Relative volume (RVOL)</dt><dd>Today's volume against the average of prior days <em>at the same time of day</em>. Above 1.5x means real participation.</dd></div>
-        <div><dt class="font-semibold">Gap &amp; strength vs Nifty</dt><dd>Whether the opening gap holds or fades, and whether the stock leads or lags the index today.</dd></div>
+        <div><dt class="font-semibold">Gap &amp; strength vs {{ market.benchmark_name }}</dt><dd>Whether the opening gap holds or fades, and whether the stock leads or lags the index today.</dd></div>
       </dl>
     </div>
     <div>
       <h3 class="font-bold">Context: the "fundamental" layer (30% of bias)</h3>
       <p class="mt-2 text-slate-800">Fundamentals barely move a stock within one day. For day trading they act as <strong>filters</strong> and a <strong>tilt</strong>, not a reason to trade.</p>
       <dl class="mt-2 space-y-2">
-        <div><dt class="font-semibold">Liquidity (avg daily traded value)</dt><dd>Below Rs {{ min_value }} Cr/day, spreads and slippage eat the edge. Hard filter.</dd></div>
+        <div><dt class="font-semibold">Liquidity (avg daily traded value)</dt><dd>Below {{ min_value | money_units }}/day, spreads and slippage eat the edge. Hard filter.</dd></div>
         <div><dt class="font-semibold">Daily volatility (ATR%)</dt><dd>You need range to make money: under {{ (min_atr * 100) | round | int }}% is a hard filter, and above 4% means size down.</dd></div>
         <div><dt class="font-semibold">Results / event risk</dt><dd>On results day, gaps and whipsaws dominate. Hard filter on the day itself, caution within 3 days.</dd></div>
         <div><dt class="font-semibold">Daily-chart trend</dt><dd>Trade with the higher timeframe: longs in daily uptrends, shorts in downtrends.</dd></div>

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from app import data
+from app.market import MARKET
 from app.research import forward, intraday_backtest, ledger, news, news_history, sentiment, sentiment_study
 from app.research.backtest import eval_dates, replay_stock
 from app.research.evidence import summarize
@@ -53,7 +54,7 @@ def run_backtest(progress: data.Progress = data._no_progress) -> dict:
     data.ensure_history(progress)
     bench_frame = data.load_history(BENCHMARK)
     if bench_frame is None:
-        raise ResearchError("No Nifty history available; cannot align evaluation dates.")
+        raise ResearchError(f"No {MARKET.benchmark_name} history available; cannot align evaluation dates.")
     bench = bench_frame["Close"]
     histories = {s: h for s in STOCKS if (h := data.load_history(s)) is not None and len(h) >= MIN_HISTORY}
     skipped = sorted(set(STOCKS) - set(histories))

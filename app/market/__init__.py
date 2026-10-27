@@ -14,14 +14,16 @@ from app.market.profile import Market
 MARKET_ENV = "STOCK_PICKER_MARKET"
 
 
-def _load(key: str) -> Market:
+def load(name: str | None) -> Market:
+    """The profile for a market name ('india' when unset); anything unknown is an error, never a silent default."""
+    key = (name or "india").strip().lower()
     if key == "india":
         from app.market.india import MARKET as india
         return india
     if key == "us":
         from app.market.us import MARKET as us
         return us
-    raise ValueError(f"{MARKET_ENV}={key!r}: expected 'india' or 'us'")
+    raise ValueError(f"{MARKET_ENV}={name!r}: expected 'india' or 'us'")
 
 
-MARKET: Market = _load(os.environ.get(MARKET_ENV, "india").strip().lower())
+MARKET: Market = load(os.environ.get(MARKET_ENV))
