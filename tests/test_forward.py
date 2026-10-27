@@ -11,7 +11,7 @@ from app.research import forward, u2
 from app.research.factors import top_quintile
 from tests.conftest import make_ohlcv
 
-IST = forward.IST
+TZ = forward.TZ
 
 
 def universe(stocks: int = 40, days: int = 700, seed: int = 3) -> dict[str, pd.DataFrame]:
@@ -22,7 +22,7 @@ def universe(stocks: int = 40, days: int = 700, seed: int = 3) -> dict[str, pd.D
 
 
 def at(day: pd.Timestamp, hour: int, minute: int = 0) -> datetime:
-    return datetime.combine(day.date(), time(hour, minute), IST)
+    return datetime.combine(day.date(), time(hour, minute), TZ)
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ def test_a_delisted_stock_exits_at_its_last_close():
 
 
 def test_nothing_recorded_means_nothing_scored(histories):
-    assert forward.evaluate(None, histories, datetime.now(IST))["families"] == []
+    assert forward.evaluate(None, histories, datetime.now(TZ))["families"] == []
 
 
 def simulate(histories, cal, path, last: int):

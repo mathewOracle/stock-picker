@@ -4,7 +4,6 @@ import math
 import statistics
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -13,13 +12,15 @@ from app import data
 from app.intraday.checks import DailyContext, intraday_context, intraday_technical, tradeability_issues
 from app.intraday.economics import describe as describe_math
 from app.intraday.economics import trade_math
-from app.intraday.indicators import LAST_ENTRY_BAR, NO_NEW_ENTRIES, OPENING_RANGE_END, SESSION_CLOSE, SESSION_OPEN
+from app.intraday.indicators import LAST_ENTRY_BAR, NO_NEW_ENTRIES, OPENING_RANGE_END, bar_start
 from app.intraday.setups import COUNTER_TREND, Setup, detect_setups
 from app.intraday.snapshot import Snapshot, build_snapshot
+from app.market import MARKET
+from app.market.profile import shift
 from app.signals import Signal, score
 from app.universe import BENCHMARK, STOCKS
 
-IST = ZoneInfo("Asia/Kolkata")
+TZ = MARKET.clock.tz
 MIN_RR = 1.5
 BIAS_WEIGHTS = {"technical": 0.7, "context": 0.3}
 LONG_BIAS, SHORT_BIAS = 55, 45
@@ -34,7 +35,7 @@ class MarketStatus:
     session_date: date | None
     last_bar: datetime | None
     note: str
-    nifty_change: float = float("nan")
+    index_change: float = float("nan")
 
 
 @dataclass
@@ -69,27 +70,49 @@ class IntradayScan:
         return next((r for r in self.reports if r.symbol == symbol), None)
 
 
+def tz_label(now: datetime | None = None) -> str:
+    """The exchange's zone abbreviation right now (IST; EST or EDT), so times on screen say whose clock they are."""
+    return f"{(now or datetime.now(TZ)).astimezone(TZ):%Z}"
+
+
+def entry_cutoff(day: date) -> time:
+    """No new entries after this on `day`: 45 minutes before THAT day's close (a US half-day closes at 13:00)."""
+    hours = MARKET.session(day)
+    return NO_NEW_ENTRIES if hours is None else shift(hours.close, -MARKET.clock.last_entry_before_close)
+
+
 def market_phase(now: datetime) -> tuple[str, bool, bool]:
-    """(label, is_open, accepting_new_entries) for NSE cash market hours. Holidays aren't known."""
+    """(label, is_open, accepting_new_entries) for cash-market hours; holidays and half-days if the profile knows them."""
     if now.weekday() >= 5:
         return "Closed (weekend)", False, False
+    hours = MARKET.session(now.date())
+    if hours is None:
+        return "Closed (holiday)", False, False
     t = now.time()
-    if t < time(9, 0):
+    if t < MARKET.clock.early_start:
         return "Pre-market", False, False
-    if t < SESSION_OPEN:
-        return "Pre-open auction", False, False
+    if t < hours.open:
+        return MARKET.clock.early_label, False, False
     if t < OPENING_RANGE_END:
         return "Opening range forming", True, False
-    if t < NO_NEW_ENTRIES:
+    if t < entry_cutoff(now.date()):
         return "Open: trading window", True, True
-    if t < SESSION_CLOSE:
+    if t < hours.close:
         return "Open: no new entries (square-off time)", True, False
     return "Closed", False, False
 
 
-def _status(now: datetime, nifty: Snapshot | None, last_bar: datetime | None) -> MarketStatus:
+def _half_day_note(day: date) -> str:
+    hours = MARKET.session(day)
+    if hours is None or hours.close >= MARKET.clock.close:
+        return ""
+    square_off = shift(hours.close, -MARKET.clock.square_off_before_close)
+    return f" Half-day: the market closes at {hours.close:%H:%M}, so be flat by {square_off:%H:%M}."
+
+
+def _status(now: datetime, index: Snapshot | None, last_bar: datetime | None) -> MarketStatus:
     phase, is_open, accepting = market_phase(now)
-    session_date = nifty.session_date if nifty else None
+    session_date = index.session_date if index else None
     if not is_open:
         note = (f"Market closed. Showing how the last session ({session_date:%d %b}) ended. "
                 "Use the next-session levels to plan tomorrow." if session_date else "Market closed.")
@@ -98,24 +121,25 @@ def _status(now: datetime, nifty: Snapshot | None, last_bar: datetime | None) ->
     elif last_bar and (now.replace(tzinfo=None) - last_bar).total_seconds() > STALE_MINUTES * 60:
         note = f"Data is from {last_bar:%H:%M}. Refresh for the latest bars (Yahoo can lag a few minutes)."
     else:
-        note = f"Live session. Last bar {last_bar:%H:%M} IST." if last_bar else "Live session."
+        note = f"Live session. Last bar {last_bar:%H:%M} {tz_label(now)}." if last_bar else "Live session."
+    note += _half_day_note(now.date())
     return MarketStatus(phase, is_open and session_date == now.date(), accepting and session_date == now.date(),
-                        session_date, last_bar, note, nifty.change if nifty else float("nan"))
+                        session_date, last_bar, note, index.change if index else float("nan"))
 
 
 def _earnings_in_days(ts: float, session_date: date) -> int | None:
     if not math.isfinite(ts):
         return None
-    days = (datetime.fromtimestamp(ts, IST).date() - session_date).days
+    days = (datetime.fromtimestamp(ts, TZ).date() - session_date).days
     return days if days >= 0 else None
 
 
-def _context(metrics: dict, scores: dict, session_date: date, sector_change: float, nifty_change: float) -> DailyContext:
+def _context(metrics: dict, scores: dict, session_date: date, sector_change: float, index_change: float) -> DailyContext:
     return DailyContext(
-        traded_value_cr=metrics["traded_value_cr"], atr_pct=metrics["atr"] / metrics["price"],
+        traded_value=metrics["traded_value"], atr_pct=metrics["atr"] / metrics["price"],
         beta=metrics["beta"], daily_technical=scores["technical"], fundamental=scores["fundamental"],
         earnings_in_days=_earnings_in_days(metrics["earnings_ts"], session_date),
-        sector_change=sector_change, nifty_change=nifty_change,
+        sector_change=sector_change, index_change=index_change,
     )
 
 
@@ -135,12 +159,15 @@ def describe_evidence(block: dict) -> str:
 
 
 def _too_late(report: IntradayReport, status: MarketStatus) -> bool:
-    """No new entry from a signal bar closing after NO_NEW_ENTRIES -- the backtest never opens one that late.
+    """No new entry from a signal bar closing after the entry cutoff -- the backtest never opens one that late.
 
     The wall clock catches lagging data during market hours; the bar time catches setups that fired on the
-    last session's closing bars and would otherwise look tradeable all evening.
+    last session's closing bars and would otherwise look tradeable all evening. The cutoff is that session's own
+    (45 minutes before a half-day's early close too).
     """
-    return (status.is_open and not status.accepting_entries) or report.snapshot.day.index[-1].time() > LAST_ENTRY_BAR
+    last = report.snapshot.day.index[-1]
+    cutoff_bar = min(LAST_ENTRY_BAR, bar_start(entry_cutoff(last.date())))
+    return (status.is_open and not status.accepting_entries) or last.time() > cutoff_bar
 
 
 def decide(report: IntradayReport, status: MarketStatus, evidence: dict | None = None) -> tuple[str, str, Setup | None]:
@@ -175,8 +202,8 @@ def decide(report: IntradayReport, status: MarketStatus, evidence: dict | None =
 
 def _build(now: datetime) -> IntradayScan:
     scan = IntradayScan(refreshed_at=data.last_intraday_refresh())
-    nifty_bars = data.load_intraday(BENCHMARK)
-    nifty = build_snapshot(nifty_bars) if nifty_bars is not None else None
+    index_bars = data.load_intraday(BENCHMARK)
+    index = build_snapshot(index_bars) if index_bars is not None else None
     swing_result = swing.build()
     snapshots = {}
     for symbol in STOCKS:
@@ -184,7 +211,7 @@ def _build(now: datetime) -> IntradayScan:
         if bars is not None and report is not None and (snap := build_snapshot(bars)) is not None:
             snapshots[symbol] = (snap, report)
     last_bar = max((s.day.index[-1] for s, _ in snapshots.values()), default=None)
-    scan.status = _status(now, nifty, last_bar.to_pydatetime() if last_bar is not None else None)
+    scan.status = _status(now, index, last_bar.to_pydatetime() if last_bar is not None else None)
 
     by_sector: dict[str, dict[str, float]] = {}
     for symbol, (snap, report) in snapshots.items():
@@ -196,7 +223,7 @@ def _build(now: datetime) -> IntradayScan:
         sector = sw.metrics["sector"]
         peers = [change for peer, change in by_sector[sector].items() if peer != symbol]
         ctx = _context(sw.metrics, sw.scores, snap.session_date,
-                       statistics.mean(peers) if peers else float("nan"), scan.status.nifty_change)
+                       statistics.mean(peers) if peers else float("nan"), scan.status.index_change)
         report = IntradayReport(symbol, STOCKS[symbol], sector, snap, ctx, intraday_technical(snap, ctx),
                                 intraday_context(ctx), detect_setups(snap), tradeability_issues(ctx))
         report.scores = {"technical": score(report.technical), "context": score(report.context)}
@@ -220,7 +247,7 @@ _memo: tuple[tuple, IntradayScan] | None = None
 def build(now: datetime | None = None) -> IntradayScan:
     """Recomputed when either data set refreshes or the market phase changes."""
     global _memo
-    now = now or datetime.now(IST)
+    now = now or datetime.now(TZ)
     backtest = data.load_result("intraday_backtest")
     key = (data.last_intraday_refresh(), data.last_refresh(), data.last_research(), market_phase(now)[0],
            now.strftime("%H:%M"), (backtest or {}).get("generated_at"))  # new evidence must not be a stale memo
@@ -230,7 +257,7 @@ def build(now: datetime | None = None) -> IntradayScan:
 
 
 def _epoch(index: pd.DatetimeIndex) -> list[int]:
-    """IST wall-clock -> epoch seconds as if UTC, so the chart's UTC axis reads in IST."""
+    """Exchange wall-clock -> epoch seconds as if UTC, so the chart's UTC axis reads in exchange time."""
     return [int(ts.timestamp()) for ts in index.tz_localize("UTC")]
 
 

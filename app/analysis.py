@@ -9,6 +9,7 @@ import pandas as pd
 from app import data
 from app.fundamentals import LOSS_PE, analyze_fundamentals, fundamental_metrics
 from app.indicators import compute_indicators
+from app.market import MARKET
 from app.patterns import ChartReport
 from app.pricecheck import assess_price
 from app.research import ml, model_view
@@ -16,7 +17,7 @@ from app.research.features import features
 from app.research.verdict import Validation, validate
 from app.scoring import Gate, composite, decide, fundamental_flags
 from app.signals import Signal, best, score, worst
-from app.technical import beta, price_metrics, traded_value_cr
+from app.technical import beta, price_metrics, traded_value
 from app.tradeplan import TradePlan
 from app.universe import BENCHMARK, INDICES, STOCKS, VIX
 
@@ -83,21 +84,22 @@ class Analysis:
         return next((r for r in self.reports if r.symbol == symbol), None)
 
 
-def market_regime(nifty: dict | None, vix: float | None) -> dict:
-    """A deliberately simple read of the tape: trend of Nifty + fear gauge."""
-    if not nifty:
+def market_regime(index: dict | None, vix: float | None) -> dict:
+    """A deliberately simple read of the tape: trend of the benchmark + fear gauge."""
+    if not index:
         return {"label": "Unknown", "detail": "No index data yet.", "tone": "slate"}
-    below_200, drawdown = nifty["pct_vs_200dma"] < 0, nifty["off_high"]
+    name = MARKET.benchmark_name
+    below_200, drawdown = index["pct_vs_200dma"] < 0, index["off_high"]
     if below_200 and drawdown < -0.10:
         return {"label": "Correction / Bearish", "tone": "red",
-                "detail": f"Nifty is {drawdown:.0%} off its 52-week high and below its 200-DMA. "
+                "detail": f"{name} is {drawdown:.0%} off its 52-week high and below its 200-DMA. "
                           "Be selective, size small, stagger entries."}
     if below_200:
         return {"label": "Weak / Range-bound", "tone": "amber",
-                "detail": "Nifty is under its 200-DMA. Favour quality and relative strength."}
+                "detail": f"{name} is under its 200-DMA. Favour quality and relative strength."}
     if vix is not None and vix > 20:
         return {"label": "Uptrend, but nervous", "tone": "amber",
-                "detail": f"Trend is up but India VIX is {vix:.1f}. Expect chop."}
+                "detail": f"Trend is up but {MARKET.vix_name} is {vix:.1f}. Expect chop."}
     return {"label": "Healthy Uptrend", "tone": "green", "detail": "Above 200-DMA with calm volatility."}
 
 
@@ -136,7 +138,7 @@ def _report(stock: data.StockData, ind: pd.DataFrame, bench: pd.Series | None,
             fund: dict, sector_pe: float, research: dict) -> StockReport:
     pa = assess_price(ind, bench)  # the same code path the backtest replays
     metrics = {**pa.metrics, **fund, "sector_pe": sector_pe, "beta": beta(ind["Close"], bench),
-               "traded_value_cr": traded_value_cr(ind)}
+               "traded_value": traded_value(ind)}
     report = StockReport(stock.symbol, STOCKS[stock.symbol], metrics, pa.technical, pa.chart,
                          analyze_fundamentals(fund, sector_pe, pa.metrics["price"]), pa.plan)
     report.scores = {"fundamental": score(report.fundamental), "technical": pa.scores["technical"],

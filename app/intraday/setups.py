@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from app.intraday.indicators import OPENING_RANGE_END, SESSION_OPEN
 from app.intraday.snapshot import Snapshot
 from app.tradeplan import MAX_T1_R, TradePlan, pick_targets
 
@@ -32,7 +33,7 @@ class Setup:
 PLAYBOOKS: dict[str, Playbook] = {p.key: p for p in [
     Playbook("orb", "Opening Range Breakout (ORB)", "Breakout",
              "First 15 minutes set the battle lines; a decisive break shows who won the open.",
-             ("Price closes beyond the 09:15-09:30 high (long) or low (short)",
+             (f"Price closes beyond the {SESSION_OPEN:%H:%M}-{OPENING_RANGE_END:%H:%M} high (long) or low (short)",
               "Price on the same side of VWAP", "Relative volume >= 1.0x",
               "Not more than 1.5 ATR past the breakout level (no chasing)"),
              "Middle of the opening range", "Next pivot / previous-day level, else 2R"),

@@ -15,7 +15,7 @@ from app import analysis, data, deskview
 from app.broker import desk
 from app.intraday import analysis as intraday
 from app.intraday import archive as intraday_archive
-from app.intraday.checks import MIN_ATR_PCT, MIN_TRADED_VALUE_CR
+from app.intraday.checks import MIN_ATR_PCT, MIN_TRADED_VALUE
 from app.intraday.indicators import NO_NEW_ENTRIES, SQUARE_OFF
 from app.intraday.setups import PLAYBOOKS
 from app.jobs import RefreshJob
@@ -108,7 +108,7 @@ def intraday_dashboard(request: Request):
     scan = intraday.build()
     ctx = {"scan": scan, "nav": "intraday", "playbooks": PLAYBOOKS.values(),
            "setups": [r for r in scan.reports if r.verdict.endswith("setup")],
-           "min_rr": intraday.MIN_RR, "min_value": MIN_TRADED_VALUE_CR, "min_atr": MIN_ATR_PCT,
+           "min_rr": intraday.MIN_RR, "min_value": MIN_TRADED_VALUE, "min_atr": MIN_ATR_PCT,
            "long_bias": intraday.LONG_BIAS, "short_bias": intraday.SHORT_BIAS}
     return templates.TemplateResponse(request, "intraday.html", ctx)
 

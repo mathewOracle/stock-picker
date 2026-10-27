@@ -1,20 +1,20 @@
 """Intraday backtest: replay the 7 playbook setups over the archived 5-minute history, exactly as the live scanner sees them.
 
 Parity with live: for each stock and session we compute indicators once on the same 5-session window the live
-scanner uses, then take a decision every 15 minutes (09:30-14:45) from PREFIXES of that window (every indicator only
-looks back, and a test proves a prefix equals recomputing on truncated data).
+scanner uses, then take a decision every 15 minutes (opening range complete -> no-new-entries cutoff) from PREFIXES of that
+window (every indicator only looks back, and a test proves a prefix equals recomputing on truncated data).
 
 Trade rules (fixed in advance): signal at a bar's close -> entry at the NEXT bar's open -> the setup's own stop and
-first target -> stop wins if both are touched in one bar -> gaps fill at the open -> forced exit at the 15:15
-square-off. One trade per stock, session and (setup, side), at its first qualifying trigger. Costs charged both sides.
-Only COMPLETE sessions are replayed (a half-finished day has no outcome yet).
+first target -> stop wins if both are touched in one bar -> gaps fill at the open -> forced exit at the market's
+square-off (15:15 NSE, 15:45 New York). One trade per stock, session and (setup, side), at its first qualifying trigger.
+Costs charged both sides. Only COMPLETE sessions are replayed (a half-finished day has no outcome yet; a US half-day
+that closes at 13:00 never reaches the square-off, so it is never replayed either).
 """
 
 import math
 import os
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from datetime import time as clock
 
 import numpy as np
 import pandas as pd
@@ -26,12 +26,14 @@ from app.intraday.economics import COST_PER_SIDE   # one cost assumption for liv
 from app.intraday.indicators import LAST_ENTRY_BAR, OPENING_RANGE_END, SQUARE_OFF, bar_start, with_intraday_indicators
 from app.intraday.setups import PLAYBOOKS, detect_setups
 from app.intraday.snapshot import assemble
+from app.market.profile import shift
 from app.universe import STOCKS
 
 LOOKBACK_SESSIONS = 5        # what Yahoo's 5-day view gives the live scanner
-FIRST_DECISION_START = bar_start(OPENING_RANGE_END)  # 09:25: closes at 09:30, when the opening range is complete
-LAST_DECISION_START = LAST_ENTRY_BAR               # 14:40: closes at the live no-new-entries cutoff
-SQUARE_OFF_START = bar_start(SQUARE_OFF)           # 15:10: last bar used, closes at the live time exit
+FIRST_DECISION_START = bar_start(OPENING_RANGE_END)  # the bar that closes when the opening range is complete
+LAST_DECISION_START = LAST_ENTRY_BAR               # closes at the live no-new-entries cutoff
+SQUARE_OFF_START = bar_start(SQUARE_OFF)           # last bar used, closes at the live time exit
+END_SEEN_FROM = shift(SQUARE_OFF, -15)             # a session whose bars stop before this has no usable end
 DECISION_EVERY_MIN = 15
 MIN_RR = LIVE_MIN_RR         # the same reward/risk bar as the live verdict (imported, never copied)
 LEDGER_PATH = data.DB_PATH.parent / "research" / "intraday_trades.csv.gz"
@@ -44,8 +46,8 @@ def simulate(day: pd.DataFrame, pos: int, side: str, stop: float, target: float)
     """Trade signalled at the close of day's bar `pos`. None = no entry, or the session has no usable end."""
     sign = 1 if side == "Long" else -1
     starts = np.array([t.time() for t in day.index])
-    last = int(np.searchsorted([s > SQUARE_OFF_START for s in starts], True)) - 1   # last bar allowed (<= 15:10)
-    if pos + 1 > last or starts[last] < clock(15, 0):    # no next bar, or the session's end is missing
+    last = int(np.searchsorted([s > SQUARE_OFF_START for s in starts], True)) - 1   # last bar allowed (<= square-off)
+    if pos + 1 > last or starts[last] < END_SEEN_FROM:   # no next bar, or the session's end is missing
         return None
     o, h, l, c = (day[col].to_numpy() for col in ("Open", "High", "Low", "Close"))
     entry = float(o[pos + 1])
@@ -75,7 +77,7 @@ def simulate(day: pd.DataFrame, pos: int, side: str, stop: float, target: float)
 
 
 def decision_positions(day: pd.DataFrame) -> list[int]:
-    """Positions of today's bars after which we take a decision (every 15 minutes, 09:30 to 14:45)."""
+    """Positions of today's bars after which we take a decision (every 15 minutes, opening range -> entry cutoff)."""
     out = []
     for pos, ts in enumerate(day.index):
         minutes = (ts.hour * 60 + ts.minute) - (FIRST_DECISION_START.hour * 60 + FIRST_DECISION_START.minute)

@@ -26,8 +26,8 @@ def make_session_bars(days: list[list[float]], volume: float = 1000.0, start="20
     return pd.concat(frames)
 
 
-CONTEXT = DailyContext(traded_value_cr=800, atr_pct=0.02, beta=1.0, daily_technical=65, fundamental=70,
-                       earnings_in_days=None, sector_change=0.004, nifty_change=0.002)
+CONTEXT = DailyContext(traded_value=800, atr_pct=0.02, beta=1.0, daily_technical=65, fundamental=70,
+                       earnings_in_days=None, sector_change=0.004, index_change=0.002)
 
 
 def test_floor_pivots_textbook_values():
@@ -98,7 +98,7 @@ def test_market_phase(hhmm, phase, accepting):
 
 def test_hard_filters():
     assert tradeability_issues(CONTEXT) == []
-    illiquid = DailyContext(**{**CONTEXT.__dict__, "traded_value_cr": 20, "earnings_in_days": 0})
+    illiquid = DailyContext(**{**CONTEXT.__dict__, "traded_value": 20, "earnings_in_days": 0})
     issues = tradeability_issues(illiquid)
     assert any("Illiquid" in i for i in issues) and "Results today" in issues
 

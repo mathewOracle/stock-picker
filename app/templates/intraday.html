@@ -23,7 +23,7 @@
   <h2 id="mkt-h" class="text-lg font-bold">Market: {{ st.phase }}</h2>
   <p>{{ st.note }}</p>
   <p class="mt-1 text-sm">Session {{ st.session_date.strftime('%a %d %b %Y') if st.session_date else '–' }}
-    &middot; Nifty today {{ delta(st.nifty_change) }}
+    &middot; Nifty today {{ delta(st.index_change) }}
     &middot; Hours 09:15-15:30 IST; no new entries after {{ no_new_entries }}; every trade is closed the same day, by {{ square_off }} at the latest (before the broker's auto square-off).</p>
 </section>
 

@@ -9,10 +9,13 @@ import math
 import numpy as np
 import pandas as pd
 
+from app.market import MARKET
 from app.signals import Signal, grade
 
 NAN = float("nan")
 EXTENDED_ATR = 3.0  # more than this many ATRs above the 20-EMA = chasing
+INDEX = MARKET.benchmark_name
+RS_SIGNAL = f"Relative strength vs {INDEX}"   # also a pinned model column (research/features.py): one source
 
 
 def _ok(*values) -> bool:
@@ -33,7 +36,7 @@ def _bars_since_cross(diff: pd.Series, lookback: int) -> int | None:
 
 
 def beta(close: pd.Series, benchmark: pd.Series | None, days: int = 252) -> float:
-    """Sensitivity to the index from aligned daily returns (1.0 = moves with Nifty)."""
+    """Sensitivity to the index from aligned daily returns (1.0 = moves with the benchmark)."""
     if benchmark is None:
         return NAN
     returns = pd.concat([close.pct_change(), benchmark.pct_change()], axis=1, join="inner").dropna().tail(days)
@@ -43,9 +46,9 @@ def beta(close: pd.Series, benchmark: pd.Series | None, days: int = 252) -> floa
     return float(stock.cov(index) / index.var())
 
 
-def traded_value_cr(df: pd.DataFrame, days: int = 20) -> float:
-    """Average daily traded value in crore rupees (1 Cr = 10 million) -- the liquidity yardstick."""
-    return float((df["Close"] * df["Volume"]).tail(days).mean() / 1e7)
+def traded_value(df: pd.DataFrame, days: int = 20) -> float:
+    """Average daily traded value in the market's big unit (Rs crore, $ million) -- the liquidity yardstick."""
+    return float((df["Close"] * df["Volume"]).tail(days).mean() / MARKET.money.big_divisor)
 
 
 def price_metrics(close: pd.Series) -> dict:
@@ -217,9 +220,9 @@ def _check_relative_strength(ind, bench: pd.Series | None) -> Signal | None:
     rs3 = _ret(ind["Close"], 63) - _ret(bench, 63)
     rs6 = _ret(ind["Close"], 126) - _ret(bench, 126)
     pts = 1.0 if rs3 > 0 and rs6 > 0 else -1.0 if rs3 < 0 and rs6 < 0 else 0.0
-    note = {1.0: "Outperforming Nifty over 3 and 6 months: market leader.",
-            -1.0: "Lagging Nifty over 3 and 6 months: market laggard."}.get(pts, "Mixed vs Nifty.")
-    return Signal("Relative strength vs Nifty", f"3M {rs3:+.1%}, 6M {rs6:+.1%}", pts, 2.0, note)
+    note = {1.0: f"Outperforming {INDEX} over 3 and 6 months: market leader.",
+            -1.0: f"Lagging {INDEX} over 3 and 6 months: market laggard."}.get(pts, f"Mixed vs {INDEX}.")
+    return Signal(RS_SIGNAL, f"3M {rs3:+.1%}, 6M {rs6:+.1%}", pts, 2.0, note)
 
 
 def extension_atr(ind: pd.DataFrame) -> float:

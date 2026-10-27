@@ -22,9 +22,10 @@ import pandas as pd
 import yfinance as yf
 from curl_cffi import requests as curl_requests
 
+from app.market import MARKET
 from app.universe import BENCHMARK, INDICES, STOCKS
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "cache.db"
+DB_PATH = MARKET.data_dir / "cache.db"   # each market has its own directory: caches, ledgers and journals never mix
 OHLCV = ["Open", "High", "Low", "Close", "Volume"]
 ATTEMPTS = 2
 FUNDAMENTALS_TTL = 20 * 3600
@@ -144,7 +145,7 @@ def _retry(fn: Callable, *args):
 def _clean_frame(frame: pd.DataFrame) -> pd.DataFrame:
     frame = frame[OHLCV].dropna(subset=["Open", "High", "Low", "Close"]).copy()
     frame["Volume"] = frame["Volume"].fillna(0)
-    if getattr(frame.index, "tz", None) is not None:  # keep IST wall-clock, drop tz (empty replies have no tz)
+    if getattr(frame.index, "tz", None) is not None:  # keep the exchange's wall-clock, drop tz (empty replies have no tz)
         frame.index = frame.index.tz_localize(None)
     return frame
 
@@ -228,7 +229,7 @@ def refresh(progress: Progress = _no_progress) -> RefreshResult:
 
 
 def refresh_symbol(symbol: str) -> RefreshResult:
-    """Re-analyse ONE stock: its daily prices (plus Nifty, which relative strength needs) and its statements, right now.
+    """Re-analyse ONE stock: its daily prices (plus the benchmark, which relative strength needs) and its statements, right now.
 
     Statements are always re-fetched here (one stock, one request); the all-stocks refresh only does it when stale.
     """
@@ -248,7 +249,7 @@ def refresh_symbol(symbol: str) -> RefreshResult:
 
 
 def refresh_intraday(progress: Progress = _no_progress, symbols: list[str] | None = None) -> RefreshResult:
-    """5-minute bars for the last 5 sessions (all stocks + Nifty by default) in one batched call."""
+    """5-minute bars for the last 5 sessions (all stocks + the benchmark by default) in one batched call."""
     started, session = time.time(), _fresh_session()
     symbols = symbols or list(STOCKS) + [BENCHMARK]
     progress(0, 1, "intraday bars")

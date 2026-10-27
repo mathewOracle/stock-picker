@@ -6,19 +6,19 @@ evaluation says later was decided before its outcome existed.
 """
 
 import time
-from datetime import datetime, time as clock
+from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 from app import data
+from app.market import MARKET
 from app.research import u2
 from app.research.factors import FAMILIES, MIN_NAMES, MIN_T, STEP, WARMUP, features, passes, portfolio, stats, top_quintile
 
-PICKS_PATH = Path(__file__).resolve().parents[2] / "docs" / "forward" / "momentum_picks.csv"
-IST = ZoneInfo("Asia/Kolkata")
-SETTLED_AFTER, SESSION_OPEN = clock(16, 0), clock(9, 15)
+PICKS_PATH = MARKET.docs_dir / "forward" / "momentum_picks.csv"   # git-tracked, per market
+TZ = MARKET.clock.tz
+SETTLED_AFTER, SESSION_OPEN = MARKET.clock.settled_after, MARKET.clock.open
 MIN_COVERAGE, MAX_STALE_DAYS, VERDICT_PERIODS = 0.90, 5, 15
 TRACKED = {"M1": "M1 12-1 momentum", "M2": "M2 6-1 momentum", "M6": "M6 risk-adjusted momentum"}
 FEATURES = [FAMILIES[name][0] for name in TRACKED.values()]
@@ -32,21 +32,21 @@ class NotDue(Exception):
 # ---------- sessions ----------
 
 def calendar(histories: dict[str, pd.DataFrame]) -> pd.DatetimeIndex:
-    """NSE sessions = days on which at least half of the stocks traded (holidays fall out on their own)."""
+    """Exchange sessions = days on which at least half of the stocks traded (holidays fall out on their own)."""
     counts = pd.concat([h.index.to_series() for h in histories.values()]).value_counts()
     return pd.DatetimeIndex(sorted(counts[counts >= len(histories) / 2].index))
 
 
 def last_completed(cal: pd.DatetimeIndex, now: datetime) -> pd.Timestamp | None:
     """Latest session whose closing prices are final at `now` (a bar from a live session is not)."""
-    today = now.astimezone(IST)
+    today = now.astimezone(TZ)
     done = [d for d in cal if d.date() < today.date() or (d.date() == today.date() and today.time() >= SETTLED_AFTER)]
     return done[-1] if done else None
 
 
 def holding(cal: pd.DatetimeIndex, recorded_at: datetime) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
     """(entry, exit): entry = first session opening AFTER the picks were recorded; exit = 20 sessions later."""
-    later = [i for i, d in enumerate(cal) if datetime.combine(d.date(), SESSION_OPEN, IST) > recorded_at]
+    later = [i for i, d in enumerate(cal) if datetime.combine(d.date(), SESSION_OPEN, TZ) > recorded_at]
     if not later:
         return None, None
     pos = later[0]
@@ -87,7 +87,7 @@ def snapshot(histories: dict[str, pd.DataFrame], cal: pd.DatetimeIndex, signal: 
 def next_signal(picks: pd.DataFrame | None, cal: pd.DatetimeIndex, now: datetime) -> pd.Timestamp:
     """The session to rank on now, or NotDue if the previous holding period is still running."""
     signal = last_completed(cal, now)
-    if signal is None or (now.astimezone(IST).date() - signal.date()).days > MAX_STALE_DAYS:
+    if signal is None or (now.astimezone(TZ).date() - signal.date()).days > MAX_STALE_DAYS:
         raise NotDue("Price data is stale (no completed session in the last few days). Refresh and try again.")
     if picks is not None and not picks.empty:
         _, exit_day = holding(cal, datetime.fromisoformat(picks["recorded_at"].iloc[-1]))
@@ -103,7 +103,7 @@ def record(histories: dict[str, pd.DataFrame], now: datetime, path: Path = PICKS
     picks = load_picks(path)
     signal = next_signal(picks, cal, now)
     snap = snapshot(histories, cal, signal)
-    snap.insert(0, "recorded_at", now.astimezone(IST).isoformat(timespec="seconds"))
+    snap.insert(0, "recorded_at", now.astimezone(TZ).isoformat(timespec="seconds"))
     snap.insert(0, "signal", signal.strftime("%Y-%m-%d"))
     path.parent.mkdir(parents=True, exist_ok=True)
     snap.to_csv(path, mode="a", header=not path.exists(), index=False, float_format="%.6f")
@@ -144,7 +144,7 @@ def evaluate(picks: pd.DataFrame | None, histories: dict[str, pd.DataFrame], now
             panel.append(group.assign(n=n, ret=group["symbol"].map(rets)).dropna(subset=["ret"]))
     latest = picks[picks["signal"] == picks["signal"].max()]
     out["current"] = {**out["rebalances"][-1],
-                      "picks": {key: sorted(latest.loc[latest[FLAGS[name]] == 1, "symbol"].str.removesuffix(".NS"))
+                      "picks": {key: sorted(latest.loc[latest[FLAGS[name]] == 1, "symbol"].map(MARKET.short_symbol))
                                 for key, name in TRACKED.items()}}
     full = pd.concat(panel, ignore_index=True) if panel else None
     for key, name in TRACKED.items():
@@ -177,7 +177,7 @@ def run(progress: data.Progress = data._no_progress, now: datetime | None = None
     histories = {s: h for s in u2.SYMBOLS if (h := u2.load(s)) is not None}
     if not histories:
         raise data.RefreshError("No U2 price history on disk yet; run `python -m scripts.fetch_extra_universe`.")
-    now = now or datetime.now(IST)
+    now = now or datetime.now(TZ)
     if refreshed:   # ranking on prices that were not refreshed in this very run is not allowed
         try:
             snap = record(histories, now, path)

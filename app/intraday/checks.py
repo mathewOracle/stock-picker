@@ -11,22 +11,25 @@ from dataclasses import dataclass
 
 from app.intraday.indicators import OPENING_RANGE_END
 from app.intraday.snapshot import Snapshot
+from app.market import MARKET
 from app.signals import Signal, grade
 
-MIN_TRADED_VALUE_CR = 100   # below this, spreads/impact costs eat intraday edges
+MIN_TRADED_VALUE = MARKET.min_traded_value   # in the market's big unit/day: below this, spreads/impact eat intraday edges
+LIQUIDITY_GRADES = [(5 * MIN_TRADED_VALUE, 1), (MIN_TRADED_VALUE, 0.5), (MIN_TRADED_VALUE / 4, -0.3)]
 MIN_ATR_PCT = 0.01          # below 1% daily range there's not enough room to trade
+INDEX = MARKET.benchmark_name
 
 
 @dataclass(frozen=True)
 class DailyContext:
-    traded_value_cr: float      # 20-day average daily traded value, in crore rupees
+    traded_value: float         # 20-day average daily traded value, in the market's big unit (Rs crore, $ million)
     atr_pct: float              # daily ATR(14) as % of price
-    beta: float                 # vs Nifty, 1 year of daily returns
+    beta: float                 # vs the benchmark, 1 year of daily returns
     daily_technical: float      # swing technical score (0-100)
     fundamental: float          # swing fundamental score (0-100)
     earnings_in_days: int | None
     sector_change: float        # average % change of sector peers today
-    nifty_change: float
+    index_change: float
 
 
 def _ok(*values) -> bool:
@@ -149,11 +152,11 @@ def _relative_volume(s: Snapshot) -> Signal | None:
 
 
 def _relative_strength(s: Snapshot, ctx: DailyContext) -> Signal | None:
-    if not _ok(ctx.nifty_change):
+    if not _ok(ctx.index_change):
         return None
-    spread = s.change - ctx.nifty_change
+    spread = s.change - ctx.index_change
     pts = 1.0 if spread > 0.005 else -1.0 if spread < -0.005 else 0.0
-    return Signal("Strength vs Nifty (today)", f"{s.change:+.2%} vs Nifty {ctx.nifty_change:+.2%}", pts, 1.5,
+    return Signal(f"Strength vs {INDEX} (today)", f"{s.change:+.2%} vs {INDEX} {ctx.index_change:+.2%}", pts, 1.5,
                   "Outperforming the index today: a leader." if pts > 0
                   else "Underperforming the index today: a laggard." if pts < 0 else "Moving with the index.")
 
@@ -168,10 +171,10 @@ def intraday_technical(s: Snapshot, ctx: DailyContext) -> list[Signal]:
 
 def intraday_context(ctx: DailyContext) -> list[Signal]:
     out = []
-    if _ok(ctx.traded_value_cr):
-        out.append(Signal("Liquidity (avg daily traded value)", f"Rs {ctx.traded_value_cr:,.0f} Cr",
-                          grade(ctx.traded_value_cr, [(500, 1), (MIN_TRADED_VALUE_CR, 0.5), (25, -0.3)], below=-1), 1.5,
-                          "Deep liquidity: tight spreads, easy exits." if ctx.traded_value_cr >= MIN_TRADED_VALUE_CR
+    if _ok(ctx.traded_value):
+        out.append(Signal("Liquidity (avg daily traded value)", MARKET.money.big_units(ctx.traded_value),
+                          grade(ctx.traded_value, LIQUIDITY_GRADES, below=-1), 1.5,
+                          "Deep liquidity: tight spreads, easy exits." if ctx.traded_value >= MIN_TRADED_VALUE
                           else "Thin liquidity: wide spreads and slippage."))
     if _ok(ctx.atr_pct):
         pts = 1.0 if 0.012 <= ctx.atr_pct <= 0.04 else -0.5 if ctx.atr_pct > 0.04 else -0.3
@@ -199,7 +202,7 @@ def intraday_context(ctx: DailyContext) -> list[Signal]:
         out.append(Signal("Sector flow today", f"sector peers {ctx.sector_change:+.2%}", pts, 1.0,
                           "Sector tailwind." if pts > 0 else "Sector headwind." if pts < 0 else "Sector flat."))
     if _ok(ctx.beta):
-        out.append(Signal("Beta vs Nifty", f"{ctx.beta:.2f}", 0.0, 0.0,  # informational: sizes, doesn't score
+        out.append(Signal(f"Beta vs {INDEX}", f"{ctx.beta:.2f}", 0.0, 0.0,  # informational: sizes, doesn't score
                           "Moves more than the index: size smaller." if ctx.beta > 1.2 else "Moves roughly with or less than the index."))
     return out
 
@@ -207,8 +210,8 @@ def intraday_context(ctx: DailyContext) -> list[Signal]:
 def tradeability_issues(ctx: DailyContext) -> list[str]:
     """Hard filters: any issue here means 'no intraday trade' regardless of setup quality."""
     issues = []
-    if _ok(ctx.traded_value_cr) and ctx.traded_value_cr < MIN_TRADED_VALUE_CR:
-        issues.append(f"Illiquid (< Rs {MIN_TRADED_VALUE_CR} Cr/day)")
+    if _ok(ctx.traded_value) and ctx.traded_value < MIN_TRADED_VALUE:
+        issues.append(f"Illiquid (< {MARKET.money.big_units(MIN_TRADED_VALUE)}/day)")
     if _ok(ctx.atr_pct) and ctx.atr_pct < MIN_ATR_PCT:
         issues.append("Too little daily range (< 1% ATR)")
     if ctx.earnings_in_days == 0:

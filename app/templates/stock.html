@@ -107,7 +107,7 @@
       ('Revenue CAGR 3y', m.rev_cagr | pct), ('EPS CAGR 3y', m.eps_cagr | pct), ('Debt/Equity', m.de | num(2)), ('Interest cover', m.interest_cover | num),
       ('FCF yield', m.fcf_yield | pct(false)), ('Piotroski', (m.piotroski ~ '/' ~ m.piotroski_max) if m.piotroski_max else 'n/a'),
       ('Dividend yield', (m.div_yield / 100) | pct(false)), ('Analyst target', m.target_price | num),
-      ('Beta vs Nifty', m.beta | num(2)), ('Avg traded value', 'Rs ' ~ (m.traded_value_cr | num(0)) ~ ' Cr') ] %}
+      ('Beta vs Nifty', m.beta | num(2)), ('Avg traded value', 'Rs ' ~ (m.traded_value | num(0)) ~ ' Cr') ] %}
     <div class="flex justify-between border-b border-slate-100"><dt class="text-slate-700">{{ label }}</dt><dd class="font-medium">{{ val }}</dd></div>
     {% endfor %}
   </dl>

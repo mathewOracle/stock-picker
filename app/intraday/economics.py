@@ -7,9 +7,10 @@ the outcome. Single source of truth for the cost assumption (the backtest import
 
 import math
 
+from app.market import MARKET
 from app.tradeplan import TradePlan
 
-COST_PER_SIDE = 0.0006     # brokerage + STT + exchange fees + GST + stamp + slippage, NSE intraday, large caps
+COST_PER_SIDE = MARKET.intraday_cost_per_side   # brokerage + taxes/fees + slippage for this market's large caps
 
 
 def cost_r(plan: TradePlan) -> float:

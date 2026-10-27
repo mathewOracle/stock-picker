@@ -1,4 +1,4 @@
-"""Pure intraday indicator math on 5-minute OHLCV bars (index = IST wall-clock time).
+"""Pure intraday indicator math on 5-minute OHLCV bars (index = the exchange's wall-clock time).
 
 VWAP (+/- 1 and 2 sigma bands), opening range, classic floor pivots with the
 Central Pivot Range (CPR), relative volume by time of day, and gap stats.
@@ -11,12 +11,15 @@ import numpy as np
 import pandas as pd
 
 from app.indicators import atr, ema, rsi, supertrend
+from app.market import MARKET
 
-SESSION_OPEN = time(9, 15)
-OPENING_RANGE_END = time(9, 30)   # first 15 minutes
-NO_NEW_ENTRIES = time(14, 45)     # brokers square off intraday (MIS) positions ~15:15-15:20
-SQUARE_OFF = time(15, 15)         # our own time exit: flat before the broker does it for us (and charges for it)
-SESSION_CLOSE = time(15, 30)
+# The regular session, from the market profile (app/market). Offsets from the close are the same in every market:
+# no new entries 45 minutes before it, our own time exit 15 minutes before it (before any broker auto-square-off).
+SESSION_OPEN = MARKET.clock.open
+OPENING_RANGE_END = MARKET.clock.opening_range_end   # first 15 minutes
+NO_NEW_ENTRIES = MARKET.clock.no_new_entries
+SQUARE_OFF = MARKET.clock.square_off
+SESSION_CLOSE = MARKET.clock.close
 BAR_MINUTES = 5
 
 

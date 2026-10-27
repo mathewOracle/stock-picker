@@ -14,27 +14,14 @@ from urllib.parse import quote_plus
 
 from curl_cffi import requests as curl_requests
 
+from app.market import MARKET
 from app.universe import STOCKS
 
 LOOKBACK_DAYS = 14
-FEED = "https://news.google.com/rss/search?q={q}&hl=en-IN&gl=IN&ceid=IN:en"
-FINANCE_TERMS = "(shares OR stock OR results OR earnings OR NSE)"
+FEED = "https://news.google.com/rss/search?q={q}&" + MARKET.news.locale
+FINANCE_TERMS = MARKET.news.finance_terms
 TIMEOUT = 20
-
-# Headline names that differ from the display name (or are ambiguous words).
-ALIASES: dict[str, tuple[str, ...]] = {
-    "HINDUNILVR.NS": ("Hindustan Unilever", "HUL"), "LT.NS": ("Larsen & Toubro", "L&T"),
-    "M&M.NS": ("Mahindra & Mahindra", "M&M"), "TITAN.NS": ("Titan Company", "Titan Co"),
-    "ETERNAL.NS": ("Eternal", "Zomato"), "TMPV.NS": ("Tata Motors Passenger", "Tata Motors"),
-    "DMART.NS": ("Avenue Supermarts", "DMart", "D-Mart"), "BEL.NS": ("Bharat Electronics",),
-    "HAL.NS": ("Hindustan Aeronautics", "HAL"), "LICI.NS": ("Life Insurance Corporation", "LIC of India", "LIC"),
-    "INDIGO.NS": ("IndiGo", "InterGlobe Aviation"), "IOC.NS": ("Indian Oil", "IOC"),
-    "JIOFIN.NS": ("Jio Financial",), "SIEMENS.NS": ("Siemens India", "Siemens Ltd"),
-    "TRENT.NS": ("Trent Ltd", "Trent share", "Tata Trent"), "ITC.NS": ("ITC Ltd", "ITC share", "ITC shares"),
-    "NESTLEIND.NS": ("Nestle India",), "TCS.NS": ("Tata Consultancy Services", "TCS"),
-    "VEDL.NS": ("Vedanta",), "SBILIFE.NS": ("SBI Life",), "HDFCLIFE.NS": ("HDFC Life",),
-    "BAJAJ-AUTO.NS": ("Bajaj Auto",), "DRREDDY.NS": ("Dr Reddy's", "Dr. Reddy's"),
-}
+ALIASES: dict[str, tuple[str, ...]] = MARKET.news.aliases   # headline names that differ from the display name
 
 
 def aliases(symbol: str) -> tuple[str, ...]:

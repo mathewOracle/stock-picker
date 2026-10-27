@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from app import data
+from app.market import MARKET
 from app.research import ml
 from app.research.features import CHART_SIGNALS, TECHNICAL_SIGNALS, slug
 
@@ -22,7 +23,7 @@ LABELS = {f"t_{slug(n)}": n for n in TECHNICAL_SIGNALS} | {f"c_{slug(n)}": n for
     "pct_vs_200dma": "Price vs its 200-DMA", "rsi": "RSI", "extension": "Extension vs 20-EMA", "adx": "ADX",
     "pct_b": "Bollinger %B", "bandwidth": "Bollinger bandwidth", "macd_hist_atr": "MACD histogram",
     "volume_ratio": "Volume vs 50-day average", "st_dir": "Supertrend direction",
-    "nifty_vs_200dma": "Nifty vs its 200-DMA", "nifty_ret_3m": "Nifty 3-month return"}
+    "nifty_vs_200dma": f"{MARKET.benchmark_name} vs its 200-DMA", "nifty_ret_3m": f"{MARKET.benchmark_name} 3-month return"}
 
 
 def load() -> tuple[dict | None, dict | None]:

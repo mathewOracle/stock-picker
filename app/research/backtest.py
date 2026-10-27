@@ -15,6 +15,7 @@ from dataclasses import asdict, dataclass
 import pandas as pd
 
 from app.indicators import compute_indicators
+from app.market import MARKET
 from app.pricecheck import assess_price, price_signal
 from app.research.features import features
 
@@ -22,7 +23,7 @@ EVAL_EVERY = 5           # weekly re-evaluation, like someone running the screen
 WARMUP = 260             # 200-DMA + 52-week range need a year of bars first
 WINDOW = 300             # bars handed to the analysers (live uses ~2 years; 300 covers every lookback)
 MAX_HOLD = 40            # time stop, in sessions (~2 months)
-COST_PER_SIDE = 0.0015   # brokerage + STT + stamp + slippage, deliberately conservative
+COST_PER_SIDE = MARKET.swing_cost_per_side   # brokerage + taxes/fees + slippage for this market, deliberately conservative
 HORIZON = 20             # forward-return horizon for ML labels (sessions)
 FINAL_BARS = MAX_HOLD + 2  # this many future bars => the row's outcome can never change
 
