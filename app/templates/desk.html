@@ -9,6 +9,8 @@
     Orders are a <strong>dry run</strong>: the exact {{ market.broker_name }} requests are written to a local journal, and <strong>nothing is sent to a broker</strong>.</p>
 </div>
 
+{% if markets and markets.cards %}{% include "_markets.html" %}{% endif %}
+
 <div id="desk">{% include "_desk.html" %}</div>
 
 <section aria-labelledby="size-h" class="card card-pad mb-4 mt-6">

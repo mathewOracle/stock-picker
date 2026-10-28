@@ -3,11 +3,13 @@
 // and COLORS from charts.js, which the page loads first.
 /* global LightweightCharts, COLORS, newChart */
 
-const RANGES = { '1M': 21, '3M': 63, '6M': 126, '1Y': 252, '2Y': 504 };   // trading sessions behind each range button
+// Top-level `var` (not `const`) so a second run of this file, which htmx does on a back-button restore, cannot throw.
+var RANGES = { '1M': 21, '3M': 63, '6M': 126, '1Y': 252, '2Y': 504 };   // trading sessions behind each range button
 // Categorical colours for the compare lines. No red and no green: those mean bad and good everywhere else in the app.
-const LINE_COLORS = ['#38bdf8', '#a78bfa', '#fbbf24', '#f472b6', '#e2e8f0'];
-const priceFormatter = (price) => price.toLocaleString('en-US', { maximumFractionDigits: price >= 1000 ? 0 : 2 });
-const round = (value, places) => Math.round(value * 10 ** places) / 10 ** places;
+var FOLD_KEY = 'stock-picker.indices-panel';
+var LINE_COLORS = ['#38bdf8', '#a78bfa', '#fbbf24', '#f472b6', '#e2e8f0'];
+var priceFormatter = (price) => price.toLocaleString('en-US', { maximumFractionDigits: price >= 1000 ? 0 : 2 });
+var round = (value, places) => Math.round(value * 10 ** places) / 10 ** places;
 
 // the last `sessions` closes of a {t: [date], v: [close]} series, as chart points
 function lastPoints(series, sessions) {
@@ -66,6 +68,12 @@ function renderMarkets(payload) {
   const all = payload.series;
   const comparable = all.filter((s) => s.kind === 'index');
   if (!all.length) return;
+  const root = document.getElementById('markets-panel');
+  const fold = root.querySelector('details');
+  fold.open = localStorage.getItem(FOLD_KEY) !== 'closed';   // open for a first visit; a panel you folded stays folded
+  // Idempotent: a history restore brings back a snapshot that already holds the chips, legend and canvases from the
+  // first run, then runs this again. Start from empty containers so nothing is ever doubled.
+  ['market-ranges', 'compare-legend', 'compare-chart', 'index-chart'].forEach((id) => document.getElementById(id).replaceChildren());
   const state = { range: '1Y', selected: all.find((s) => s.symbol === payload.selected) ?? all[0] };
 
   Object.keys(RANGES).forEach((label) => {   // the range buttons come from RANGES, so the two can never disagree
@@ -105,13 +113,18 @@ function renderMarkets(payload) {
     sma200.setData(averagePoints(state.selected, 200, sessions));
     detail.timeScale().fitContent();
     document.getElementById('index-title').textContent = `${state.selected.name}, last ${state.range}`;
-    document.querySelectorAll('[data-index]').forEach((card) =>
+    root.querySelectorAll('[data-index]').forEach((card) =>
       card.setAttribute('aria-pressed', String(card.dataset.index === state.selected.symbol)));
-    document.querySelectorAll('[data-range]').forEach((chip) =>
+    root.querySelectorAll('[data-range]').forEach((chip) =>
       chip.setAttribute('aria-pressed', String(chip.dataset.range === state.range)));
   }
 
-  document.addEventListener('click', (event) => {
+  fold.addEventListener('toggle', () => {
+    localStorage.setItem(FOLD_KEY, fold.open ? 'open' : 'closed');
+    // charts built while folded were measured at zero width: once visible again, let them resize, then refit
+    if (fold.open) setTimeout(draw, 60);
+  });
+  root.addEventListener('click', (event) => {
     const card = event.target.closest('[data-index]');
     const chip = event.target.closest('[data-range]');
     if (card) state.selected = all.find((s) => s.symbol === card.dataset.index) ?? state.selected;

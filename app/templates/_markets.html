@@ -1,12 +1,18 @@
 {% from "_macros.html" import delta %}
+{% from "_icons.html" import icon %}
 {# A rising index is good news; a rising VIX or a weaker currency is not, so only indices get the green/red cue. #}
 {% macro move(value, kind) %}{% if kind == 'index' %}{{ delta(value) }}{% else %}<span>{{ value | pct }}</span>{% endif %}{% endmacro %}
 {# Indices and macro for the active market: metric cards (click one to chart it), a rebased comparison chart, one index
    in detail with its 50/200-day averages, and what the tracked stocks say today. Charts: static/markets.js. #}
 {% set net = markets.internals %}
-<section aria-labelledby="idx-h" class="mb-6">
-  <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+<section id="markets-panel" aria-labelledby="idx-h" class="mb-6">
+<details open class="group">
+  <summary class="mb-3 flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+    <span class="text-slate-500 transition-transform duration-150 group-open:rotate-90" aria-hidden="true">{{ icon('chevron-right', 'h-4 w-4') }}</span>
     <h2 id="idx-h" class="text-lg font-bold">Indices &amp; macro</h2>
+    <span class="text-xs text-slate-700">tap to show or hide</span>
+  </summary>
+  <div class="mb-3 flex justify-end">
     <div id="market-ranges" role="group" aria-label="Chart range" class="flex flex-wrap gap-1.5"></div>
   </div>
 
@@ -70,6 +76,7 @@
     </div>
   </div>
   {% endif %}
+</details>
 </section>
 
 <script src="/static/vendor/lightweight-charts.js"></script>

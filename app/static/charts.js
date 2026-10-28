@@ -3,7 +3,8 @@
 /* global LightweightCharts */
 
 // The dark slate palette (tailwind.config.js): emerald up, rose down, sky entry; one place for every colour.
-const COLORS = {
+// `var`, not `const`: htmx re-runs page scripts on a back-button restore, and a second `const COLORS` would throw.
+var COLORS = {
   up: '#34d399', down: '#fb7185', band: '#8b9ab0', level: '#64748b',
   entry: '#38bdf8', stop: '#fb7185', target: '#34d399',
   fast: '#38bdf8', mid: '#a78bfa', slow: '#fb923c', trail: '#2dd4bf',

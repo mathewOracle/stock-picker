@@ -231,3 +231,19 @@ def test_risk_input_cannot_promise_more_than_the_server_allows():
 def test_order_quantity_cannot_exceed_the_risk_rule(validated_buy):
     client.post("/desk/order?symbol=TEST.NS&mode=swing&capital=100000&risk=9&qty=99999", headers=HX)
     assert '"qty": 200' in desk.JOURNAL.read_text()
+
+
+# ---------- the indices panel above the desk ----------
+
+@needs_cache
+@pytest.mark.parametrize("tab", ["swing", "intraday"])
+def test_the_indices_panel_is_open_at_the_top_of_the_desk_on_either_tab(tab):
+    page = client.get(f"/?tab={tab}").text
+    assert '<details open class="group">' in page and 'id="compare-chart"' in page
+    assert page.index('id="markets-panel"') < page.index('id="desk"')       # above the tabs and the lists
+
+
+@needs_cache
+def test_a_tab_switch_swaps_only_the_desk_so_the_indices_charts_are_not_rebuilt():
+    fragment = client.get("/?tab=intraday", headers=HX).text
+    assert 'id="markets-panel"' not in fragment and "renderMarkets" not in fragment

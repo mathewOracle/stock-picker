@@ -161,7 +161,9 @@ def desk_page(request: Request, tab: Mode = "swing", symbol: str = "", rank: Ran
         ctx = deskview.page_context(tab, symbol, rank)
     except deskview.UnknownSymbol:
         raise HTTPException(404, f"Unknown symbol {symbol}")
-    return templates.TemplateResponse(request, "_desk.html" if _is_partial(request) else "desk.html", {**ctx, "nav": "desk"})
+    if _is_partial(request):   # a tab swap only replaces #desk; the indices panel above it stays put
+        return templates.TemplateResponse(request, "_desk.html", {**ctx, "nav": "desk"})
+    return templates.TemplateResponse(request, "desk.html", {**ctx, "nav": "desk", "markets": marketview.page(analysis.build())})
 
 
 @app.get("/desk")
