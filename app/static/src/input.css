@@ -94,6 +94,9 @@
            aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-canvas;
   }
   .chip-buy { @apply border-green-700 text-green-900 aria-pressed:border-green-700 aria-pressed:bg-green-700; }
+  /* a legend toggle names a line, it is not a selection: stays dark when on, dims and strikes through when the line is hidden */
+  .chip-legend { @apply gap-2 text-xs aria-pressed:border-slate-400 aria-pressed:bg-white aria-pressed:text-slate-800
+                        aria-[pressed=false]:line-through aria-[pressed=false]:opacity-50; }
   .chip-short { @apply border-red-700 text-red-900 aria-pressed:border-red-700 aria-pressed:bg-red-700; }
   .segmented { @apply inline-flex gap-1 rounded-xl bg-canvas p-1 ring-1 ring-slate-300; }
   .segment {

@@ -46,7 +46,8 @@
         {# a safety fact, so it is on every page: nothing here can reach a broker #}
         <span class="pill bg-amber-100 text-amber-950 ring-1 ring-amber-700">
           <span class="h-1.5 w-1.5 rounded-full bg-amber-700" aria-hidden="true"></span>Dry run<span class="sr-only">: orders are only written to a local journal, nothing is sent to a broker</span></span>
-        <nav aria-label="Main" class="hidden sm:block">
+        <nav aria-label="Main" class="hidden gap-1 sm:flex">
+          <a href="/market" {% if request.url.path == '/market' %}aria-current="page"{% endif %} class="btn btn-sm btn-quiet aria-[current=page]:bg-white aria-[current=page]:shadow-sm">Markets</a>
           <a href="/" {% if nav == 'desk' %}aria-current="page"{% endif %} class="btn btn-sm btn-quiet aria-[current=page]:bg-white aria-[current=page]:shadow-sm">Order desk</a>
         </nav>
       </div>

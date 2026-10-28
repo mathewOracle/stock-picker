@@ -1,0 +1,78 @@
+{% from "_macros.html" import delta %}
+{# A rising index is good news; a rising VIX or a weaker currency is not, so only indices get the green/red cue. #}
+{% macro move(value, kind) %}{% if kind == 'index' %}{{ delta(value) }}{% else %}<span>{{ value | pct }}</span>{% endif %}{% endmacro %}
+{# Indices and macro for the active market: metric cards (click one to chart it), a rebased comparison chart, one index
+   in detail with its 50/200-day averages, and what the tracked stocks say today. Charts: static/markets.js. #}
+{% set net = markets.internals %}
+<section aria-labelledby="idx-h" class="mb-6">
+  <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <h2 id="idx-h" class="text-lg font-bold">Indices &amp; macro</h2>
+    <div id="market-ranges" role="group" aria-label="Chart range" class="flex flex-wrap gap-1.5"></div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+    {% for i in markets.cards %}
+    <button type="button" data-index="{{ i.symbol }}" aria-pressed="{{ 'true' if i.symbol == markets.selected else 'false' }}"
+            class="card card-pad text-left aria-pressed:ring-2 aria-pressed:ring-accent">
+      <span class="block text-sm text-slate-700">{{ i.name }}</span>
+      <span class="block text-lg font-bold">{{ i.price | num(1 if i.price < 1000 else 0) }}</span>
+      <span class="block text-sm">1D {{ move(i.ret_1d, i.kind) }} &middot; 3M {{ move(i.ret_3m, i.kind) }}</span>
+      <span class="block text-xs text-slate-700">12M {{ move(i.ret_12m, i.kind) }} &middot; High {{ i.off_high | pct }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <div class="mt-4 grid gap-4 lg:grid-cols-2">
+    <div class="card card-pad">
+      <h3 class="font-bold">Performance, rebased to 100</h3>
+      <p class="mb-2 text-xs text-slate-700">Every index starts the range at 100, so a 25,000-point index and a 5,000-point one compare fairly. Tap a name below the chart to hide its line.</p>
+      <div id="compare-chart" class="h-[320px]" role="img"
+           aria-label="Line chart comparing the indices, each rebased to 100 at the start of the chosen range. The cards above list the exact figures."></div>
+      <div id="compare-legend" class="mt-3 flex flex-wrap gap-1.5"></div>
+    </div>
+    <div class="card card-pad">
+      <h3 id="index-title" class="font-bold" aria-live="polite">&nbsp;</h3>
+      <p class="mb-2 text-xs text-slate-700">Choose any card above. Violet is the 50-day average, orange the 200-day average.</p>
+      <div id="index-chart" class="h-[320px]" role="img"
+           aria-label="Price chart of the chosen index with its 50-day and 200-day moving averages. The cards above list the exact figures."></div>
+    </div>
+  </div>
+
+  {% if net.tracked %}
+  <div class="mt-4 grid items-start gap-4 lg:grid-cols-2">
+    <div class="card card-pad">
+      <h3 class="font-bold">Market internals</h3>
+      <p class="mb-3 text-xs text-slate-700">What the {{ net.tracked }} tracked stocks are doing today.</p>
+      <p class="mb-1 flex justify-between text-sm"><span>Advancing vs declining</span>
+        <span><strong class="text-green-800">{{ net.advancers }} up</strong> &middot; <strong class="text-red-800">{{ net.decliners }} down</strong>{% if net.unchanged %} &middot; {{ net.unchanged }} flat{% endif %}</span></p>
+      <div class="mb-4 flex h-2 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+        <span class="bg-green-700" style="width: {{ net.advancers / net.tracked * 100 }}%"></span>
+        <span class="bg-red-700" style="width: {{ net.decliners / net.tracked * 100 }}%"></span>
+      </div>
+      {% if net.breadth is not none %}
+      <p class="mb-1 flex justify-between text-sm"><span>Above their 200-day average</span><strong>{{ (net.breadth * 100) | round | int }}%</strong></p>
+      <div class="meter"><span class="accent-gradient absolute inset-y-0 left-0 rounded-full" style="width: {{ net.breadth * 100 }}%"></span></div>
+      {% endif %}
+    </div>
+    <div class="card card-pad">
+      <h3 class="font-bold">Sectors today</h3>
+      <p class="mb-3 text-xs text-slate-700">Average 1-day move of the tracked stocks in each sector; the 1-month move beside it.</p>
+      <ul class="space-y-2">
+        {% for sector in net.sectors %}
+        <li class="grid grid-cols-[minmax(0,1fr)_4rem_7.5rem] items-center gap-3 text-sm">
+          <span class="leading-tight" title="{{ sector.n }} stocks">{{ sector.name }}</span>
+          <span class="relative h-2 rounded-full bg-slate-200" aria-hidden="true">
+            <span class="absolute top-0 h-2 rounded-full {{ 'bg-green-700 left-1/2' if sector.ret_1d >= 0 else 'bg-red-700 right-1/2' }}" style="width: {{ sector.bar / 2 }}%"></span></span>
+          <span class="whitespace-nowrap text-right">{{ delta(sector.ret_1d) }} <span class="text-xs text-slate-700">{{ sector.ret_1m | pct }} 1M</span></span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+<script src="/static/vendor/lightweight-charts.js"></script>
+<script src="/static/charts.js"></script>
+<script src="/static/markets.js"></script>
+<script>renderMarkets({{ {"series": markets.series, "selected": markets.selected} | tojson }});</script>

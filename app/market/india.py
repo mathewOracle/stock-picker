@@ -76,8 +76,8 @@ STOCKS: dict[str, str] = {
 }
 
 INDICES: dict[str, str] = {
-    "^NSEI": "Nifty 50",
-    "^BSESN": "Sensex",
+    "^NSEI": "Nifty 50 (NSE)",
+    "^BSESN": "Sensex (BSE)",
     "^NSEBANK": "Nifty Bank",
     "^CNXIT": "Nifty IT",
     "^INDIAVIX": "India VIX",

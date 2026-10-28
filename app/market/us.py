@@ -51,7 +51,8 @@ STOCKS: dict[str, str] = {
 }
 
 INDICES: dict[str, str] = {
-    "^GSPC": "S&P 500", "^NDX": "Nasdaq 100", "^DJI": "Dow Jones", "^RUT": "Russell 2000", "^VIX": "VIX",
+    "^GSPC": "S&P 500", "^IXIC": "Nasdaq Composite", "^NDX": "Nasdaq 100", "^DJI": "Dow Jones",
+    "^RUT": "Russell 2000", "^VIX": "VIX",
 }
 
 # Headline names that differ from the display name, or display names that are ordinary words.

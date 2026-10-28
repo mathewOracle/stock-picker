@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import analysis, data, deskview
+from app import analysis, data, deskview, marketview
 from app.broker import desk
 from app.intraday import analysis as intraday
 from app.intraday import archive as intraday_archive
@@ -88,7 +88,7 @@ templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"
 def dashboard(request: Request):
     result = analysis.build()
     ctx = {
-        "a": result, "nav": "swing",
+        "a": result, "nav": "swing", "markets": marketview.page(result),
         "buys": [r for r in result.reports if r.verdict in BUY_LEVELS],
         "candidates": [r for r in result.reports if r.rule_verdict in BUY_LEVELS and r.verdict not in BUY_LEVELS],
         "watchlist": [r for r in result.reports if r.verdict == "Watchlist"],
