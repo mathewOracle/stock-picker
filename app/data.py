@@ -204,7 +204,7 @@ def refresh(progress: Progress = _no_progress) -> RefreshResult:
     progress(0, 1, "daily prices")
     prices = _download(symbols, session, period="2y")
     if not prices:
-        raise RefreshError("Could not reach Yahoo Finance. Check VPN/proxy and try again. "
+        raise RefreshError("Could not reach Yahoo Finance. Check your internet connection and try again. "
                            "Showing previously cached data.")
     with _connect() as conn:
         _save_frames(conn, prices, "ohlcv", DAILY_FMT)
@@ -238,7 +238,7 @@ def refresh_symbol(symbol: str) -> RefreshResult:
     started, session = time.time(), _fresh_session()
     prices = _download([symbol, BENCHMARK], session, period="2y")
     if symbol not in prices:
-        raise RefreshError(f"Yahoo returned no prices for {symbol}. Check VPN/proxy and try again. Showing previously cached data.")
+        raise RefreshError(f"Yahoo returned no prices for {symbol}. Check your internet connection and try again. Showing previously cached data.")
     statements = _retry(_fetch_fundamentals, symbol, session)
     with _connect() as conn:
         _save_frames(conn, prices, "ohlcv", DAILY_FMT)
@@ -255,7 +255,7 @@ def refresh_intraday(progress: Progress = _no_progress, symbols: list[str] | Non
     progress(0, 1, "intraday bars")
     frames = _download(symbols, session, period="5d", interval="5m")
     if not frames:
-        raise RefreshError("Could not fetch intraday data from Yahoo Finance. Check VPN/proxy.")
+        raise RefreshError("Could not fetch intraday data from Yahoo Finance. Check your internet connection.")
     with _connect() as conn:
         _save_frames(conn, frames, "intraday", INTRADAY_FMT)
     progress(1, 1, "intraday bars")
@@ -363,7 +363,7 @@ def ensure_history(progress: Progress = _no_progress) -> int:
     progress(0, 1, f"updating price history for {len(stale)} symbols")
     merged = top_up({s: load_history(s) for s in stale}, _fresh_session())
     if not merged:
-        raise RefreshError("Could not download price history from Yahoo Finance. Check VPN/proxy.")
+        raise RefreshError("Could not download price history from Yahoo Finance. Check your internet connection.")
     with _connect() as conn:
         for symbol, frame in merged.items():
             _save(conn, f"history:{symbol}", _serialize(frame, DAILY_FMT))

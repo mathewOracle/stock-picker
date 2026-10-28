@@ -71,7 +71,7 @@ def backfill(progress=data._no_progress) -> int:
     progress(0, 1, "backfilling 5-minute history")
     frames = data._download(symbols, data._fresh_session(), period=BACKFILL_PERIOD, interval="5m")
     if not frames:
-        raise data.RefreshError("Could not backfill 5-minute history from Yahoo Finance. Check VPN/proxy.")
+        raise data.RefreshError("Could not backfill 5-minute history from Yahoo Finance. Check your internet connection.")
     added = sum(append(symbol, frame) for symbol, frame in frames.items())
     progress(1, 1, "backfilling 5-minute history")
     return added

@@ -67,7 +67,8 @@ uv pip install -e . --group dev
 `serve.sh` starts the app on **http://127.0.0.1:61287** with both markets: the India / US tabs at the top switch
 market (`/?market=us` does the same, and a cookie remembers your choice). Behind that one port, a small gateway
 (`app/gateway.py`) runs one engine per market as internal workers on 61291 (India) and 61292 (US), starts them with it
-and stops them with it. It sets the corporate proxy for Yahoo Finance and refuses to start if a port is taken.
+and stops them with it. It refuses to start if a port is taken. No proxy is built in: on a network that needs one, `export HTTPS_PROXY=...`
+first; it is used only while reachable, and dropped (going direct) when it is not.
 
 | What | Command |
 |---|---|
@@ -79,8 +80,8 @@ and stops them with it. It sets the corporate proxy for Yahoo Finance and refuse
 | Check it's up (prints `200`) | `curl -s --noproxy '*' -o /dev/null -w "%{http_code}\n" http://127.0.0.1:61287/` |
 | Open it (macOS) | `open http://127.0.0.1:61287` |
 | Stop the background service | `kill $(lsof -t -nP -iTCP:61287 -sTCP:LISTEN)` |
-| Off the corporate network (no proxy) | `HTTPS_PROXY= ./serve.sh` |
-| Without the script | `.venv/bin/uvicorn app.gateway:app --port 61287` (both), or `STOCK_PICKER_MARKET=us .venv/bin/uvicorn app.main:app --port 61288` (one); set `HTTPS_PROXY` yourself on the corp network |
+| On a network that needs a proxy | `export HTTPS_PROXY=http://your-proxy:port` then `./serve.sh` (off that network the same command goes direct on its own) |
+| Without the script | `.venv/bin/uvicorn app.gateway:app --port 61287` (both), or `STOCK_PICKER_MARKET=us .venv/bin/uvicorn app.main:app --port 61288` (one); export `HTTPS_PROXY` yourself if your network needs one |
 
 ### 3. First run: load the data (in this order)
 

@@ -52,5 +52,5 @@ def refresh(progress: data.Progress = data._no_progress) -> list[str]:
         progress(n, len(batches), f"U2 prices, batch {n}")
         time.sleep(PAUSE if n < len(batches) else 0)
     if not updated:
-        raise data.RefreshError("Could not download any U2 prices from Yahoo Finance. Check VPN/proxy.")
+        raise data.RefreshError("Could not download any U2 prices from Yahoo Finance. Check your internet connection.")
     return sorted(set(SYMBOLS) - updated)

@@ -6,7 +6,8 @@
 #   ./serve.sh us 61299   US only on 61299
 # The combined service runs each market's engine as an internal worker (India 61291, US 61292; override with
 # SP_INDIA_PORT / SP_US_PORT). Each market keeps its own data dir (data/ or data-us/), so evidence never mixes.
-# Proxy defaults to the corporate sysproxy; override HTTPS_PROXY to change, or set it empty off-network.
+# No proxy is built in. Export HTTPS_PROXY yourself on a network that needs one; it is used only while reachable
+# (scripts/proxy_env.sh), so the same command works on and off a corporate network.
 cd "$(dirname "$0")" || exit 1
 
 busy() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
@@ -23,8 +24,7 @@ if busy "$PORT"; then
   exit 1
 fi
 
-export HTTPS_PROXY="${HTTPS_PROXY-http://sysproxy.wal-mart.com:8080}"
-export HTTP_PROXY="$HTTPS_PROXY"
+. scripts/proxy_env.sh
 
 if [ "$MARKET" = both ]; then
   for WORKER_PORT in "${SP_INDIA_PORT:-61291}" "${SP_US_PORT:-61292}"; do

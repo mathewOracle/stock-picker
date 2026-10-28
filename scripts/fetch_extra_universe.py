@@ -2,7 +2,7 @@
 
 The fixed candidate list lives in app/research/u2.py (moved there verbatim so the app and this script share it).
 
-Needs the corporate proxy:  HTTPS_PROXY=http://sysproxy.wal-mart.com:8080 .venv/bin/python -m scripts.fetch_extra_universe
+Run:  .venv/bin/python -m scripts.fetch_extra_universe     (on a network that needs a proxy, export HTTPS_PROXY first)
 """
 
 from app.research import u2
