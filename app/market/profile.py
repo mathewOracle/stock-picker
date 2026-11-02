@@ -102,6 +102,24 @@ class Wording:
 
 
 @dataclass(frozen=True)
+class Spans:
+    """Calendar spans in daily BARS. Exchanges trade ~252 days a year; crypto trades all 365."""
+    year: int
+
+    @property
+    def half(self) -> int:
+        return self.year // 2
+
+    @property
+    def quarter(self) -> int:
+        return self.year // 4
+
+    @property
+    def month(self) -> int:
+        return round(self.year / 12)
+
+
+@dataclass(frozen=True)
 class Market:
     key: str
     app_name: str
@@ -127,6 +145,13 @@ class Market:
     data_subdir: str = "data"
     docs_subdir: str = "docs"
     default_port: int = 61287
+    trading_days: int = 252      # daily bars per year: 252 on an exchange, 365 for 24/7 crypto
+    volume_in_money: bool = False  # Yahoo quotes crypto volume in dollars already, stock volume in shares
+    worker: str = "app.main:app"   # the ASGI app that serves this market (the gateway starts one per market)
+
+    @property
+    def spans(self) -> Spans:
+        return Spans(self.trading_days)
 
     @property
     def data_dir(self) -> Path:

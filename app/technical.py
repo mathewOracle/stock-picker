@@ -10,12 +10,15 @@ import numpy as np
 import pandas as pd
 
 from app.market import MARKET
+from app.market.profile import Spans
+from app.prices import price_text
 from app.signals import Signal, grade
 
 NAN = float("nan")
 EXTENDED_ATR = 3.0  # more than this many ATRs above the 20-EMA = chasing
 INDEX = MARKET.benchmark_name
 RS_SIGNAL = f"Relative strength vs {INDEX}"   # also a pinned model column (research/features.py): one source
+SPANS = MARKET.spans   # daily bars per month / quarter / half / year: 21/63/126/252 on an exchange, 30/91/182/365 for crypto
 
 
 def _ok(*values) -> bool:
@@ -35,7 +38,7 @@ def _bars_since_cross(diff: pd.Series, lookback: int) -> int | None:
     return None
 
 
-def beta(close: pd.Series, benchmark: pd.Series | None, days: int = 252) -> float:
+def beta(close: pd.Series, benchmark: pd.Series | None, days: int = SPANS.year) -> float:
     """Sensitivity to the index from aligned daily returns (1.0 = moves with the benchmark)."""
     if benchmark is None:
         return NAN
@@ -48,23 +51,28 @@ def beta(close: pd.Series, benchmark: pd.Series | None, days: int = 252) -> floa
 
 def traded_value(df: pd.DataFrame, days: int = 20) -> float:
     """Average daily traded value in the market's big unit (Rs crore, $ million) -- the liquidity yardstick."""
-    return float((df["Close"] * df["Volume"]).tail(days).mean() / MARKET.money.big_divisor)
+    value = df["Volume"] if MARKET.volume_in_money else df["Close"] * df["Volume"]
+    return float(value.tail(days).mean() / MARKET.money.big_divisor)
 
 
-def price_metrics(close: pd.Series) -> dict:
-    """Headline return/trend/risk numbers from a close series (stocks and indices)."""
+def price_metrics(close: pd.Series, year: int = SPANS.year) -> dict:
+    """Headline return/trend/risk numbers from a close series (stocks and indices).
+
+    `year` is bars per year for THIS series: a weekday index shown next to 24/7 coins still has 252.
+    """
     last = float(close.iloc[-1])
     sma200 = close.tail(200).mean() if len(close) >= 200 else NAN
-    year = close.tail(252)
-    daily = close.pct_change().dropna().tail(252)
+    spans = Spans(year)
+    window = close.tail(year)
+    daily = close.pct_change().dropna().tail(year)
     return {
         "price": last,
-        "ret_1d": _ret(close, 1), "ret_1m": _ret(close, 21), "ret_3m": _ret(close, 63),
-        "ret_6m": _ret(close, 126), "ret_12m": _ret(close, 252),
+        "ret_1d": _ret(close, 1), "ret_1m": _ret(close, spans.month), "ret_3m": _ret(close, spans.quarter),
+        "ret_6m": _ret(close, spans.half), "ret_12m": _ret(close, year),
         "pct_vs_200dma": float(last / sma200 - 1) if _ok(sma200) else NAN,
-        "off_high": float(last / year.max() - 1),
-        "vol": float(daily.std() * np.sqrt(252)) if len(daily) > 20 else NAN,
-        "max_dd": float((year / year.cummax() - 1).min()),
+        "off_high": float(last / window.max() - 1),
+        "vol": float(daily.std() * np.sqrt(year)) if len(daily) > 20 else NAN,
+        "max_dd": float((window / window.cummax() - 1).min()),
     }
 
 
@@ -123,7 +131,7 @@ def _check_supertrend(ind, _bench) -> Signal:
     up = ind["st_dir"].iloc[-1] > 0
     flip = _bars_since_cross(ind["st_dir"], 10)
     when = f", flipped {flip} bars ago" if flip is not None else ""
-    return Signal("Supertrend (10,3)", f"{'BUY' if up else 'SELL'} @ {ind['st_line'].iloc[-1]:,.1f}{when}",
+    return Signal("Supertrend (10,3)", f"{'BUY' if up else 'SELL'} @ {price_text(ind['st_line'].iloc[-1])}{when}",
                   1.0 if up else -1.0, 1.5,
                   "Price above the Supertrend line: trend-followers are long." if up
                   else "Price below the Supertrend line: trend-followers are out.")
@@ -156,7 +164,7 @@ def _check_macd(ind, _bench) -> Signal | None:
     note = f"{'Bullish' if above else 'Bearish'} MACD, histogram {'rising' if rising else 'falling'}."
     if cross is not None:
         note += f" Fresh {'bullish' if above else 'bearish'} crossover {cross} bars ago."
-    return Signal("MACD (12,26,9)", f"hist {hist.iloc[-1]:+.2f}", pts, 1.5, note)
+    return Signal("MACD (12,26,9)", f"hist {price_text(hist.iloc[-1], 2, signed=True, grouped=False)}", pts, 1.5, note)
 
 
 def _check_stochastic(ind, _bench) -> Signal | None:
@@ -190,8 +198,8 @@ def _check_bollinger(ind, _bench) -> Signal | None:
 def _check_obv(ind, _bench) -> Signal | None:
     if len(ind) < 25:
         return None
-    obv_delta = ind["obv"].iloc[-1] - ind["obv"].iloc[-21]
-    price_delta = ind["Close"].iloc[-1] / ind["Close"].iloc[-21] - 1
+    obv_delta = ind["obv"].iloc[-1] - ind["obv"].iloc[-SPANS.month]
+    price_delta = ind["Close"].iloc[-1] / ind["Close"].iloc[-SPANS.month] - 1
     obv_up, price_up = obv_delta > 0, price_delta > 0
     pts, note = {
         (True, True): (1.0, "Accumulation: volume confirms the rise."),
@@ -215,10 +223,10 @@ def _check_volume_surge(ind, _bench) -> Signal | None:
 
 
 def _check_relative_strength(ind, bench: pd.Series | None) -> Signal | None:
-    if bench is None or len(bench) < 130 or len(ind) < 130:
+    if bench is None or len(bench) < SPANS.half + 4 or len(ind) < SPANS.half + 4:
         return None
-    rs3 = _ret(ind["Close"], 63) - _ret(bench, 63)
-    rs6 = _ret(ind["Close"], 126) - _ret(bench, 126)
+    rs3 = _ret(ind["Close"], SPANS.quarter) - _ret(bench, SPANS.quarter)
+    rs6 = _ret(ind["Close"], SPANS.half) - _ret(bench, SPANS.half)
     pts = 1.0 if rs3 > 0 and rs6 > 0 else -1.0 if rs3 < 0 and rs6 < 0 else 0.0
     note = {1.0: f"Outperforming {INDEX} over 3 and 6 months: market leader.",
             -1.0: f"Lagging {INDEX} over 3 and 6 months: market laggard."}.get(pts, f"Mixed vs {INDEX}.")
@@ -238,7 +246,7 @@ def _check_extension(ind, _bench) -> Signal | None:
     ema20 = ind["ema20"].iloc[-1]
     if gap > EXTENDED_ATR:
         return Signal("Extension vs 20-EMA", f"{gap:.1f} ATR above", -0.8, 1.0,
-                      f"Over-extended after a sharp run: chasing risk. Better entry on a pullback toward {ema20:,.1f}.")
+                      f"Over-extended after a sharp run: chasing risk. Better entry on a pullback toward {price_text(ema20)}.")
     if gap > 2:
         return Signal("Extension vs 20-EMA", f"{gap:.1f} ATR above", -0.3, 1.0, "Stretched above the 20-EMA.")
     return Signal("Extension vs 20-EMA", f"{gap:.1f} ATR below", 0.2, 1.0,

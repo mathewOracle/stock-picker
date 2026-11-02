@@ -34,8 +34,8 @@ class Gate:
     passed: bool
 
 
-def composite(scores: dict[str, float]) -> float:
-    return sum(scores[pillar] * weight for pillar, weight in PILLAR_WEIGHTS.items())
+def composite(scores: dict[str, float], weights: dict[str, float] = PILLAR_WEIGHTS) -> float:
+    return sum(scores[pillar] * weight for pillar, weight in weights.items())
 
 
 def price_flags(m: dict) -> list[str]:
@@ -70,26 +70,29 @@ def flags(m: dict) -> list[str]:
     return price_flags(m) + fundamental_flags(m)
 
 
-def check_gates(level: str, values: dict, warnings: list[str]) -> list[Gate]:
+def check_gates(level: str, values: dict, warnings: list[str], hard_flags: frozenset[str] | set[str] = HARD_FLAGS) -> list[Gate]:
     gates = [Gate(f"{key.replace('_', '/').title()} >= {need}", f"{values[key]:.1f}", values[key] >= need)
              for key, need in GATES[level].items()]
     if level == "Strong Buy":  # top conviction never means chasing a spike
         extension = values.get("extension", float("nan"))
         gates.append(Gate(f"Not extended (< {EXTENDED_ATR:g} ATR above 20-EMA)", f"{extension:.1f} ATR",
                           not extension > EXTENDED_ATR))
-    vetoes = [f for f in warnings if f in HARD_FLAGS]
+    vetoes = [f for f in warnings if f in hard_flags]
     gates.append(Gate("No hard red flags", ", ".join(vetoes) or "none", not vetoes))
     return gates
 
 
-def decide(values: dict, warnings: list[str]) -> tuple[str, list[Gate]]:
-    """Return (verdict, gates of the level it qualified for -- or the Buy gates it failed)."""
+def decide(values: dict, warnings: list[str], hard_flags: frozenset[str] | set[str] = HARD_FLAGS) -> tuple[str, list[Gate]]:
+    """Return (verdict, gates of the level it qualified for -- or the Buy gates it failed).
+
+    `hard_flags` are the warnings that veto a buy: stocks veto losses and leverage, coins veto dilution and illiquidity.
+    """
     for level in ("Strong Buy", "Buy"):
-        gates = check_gates(level, values, warnings)
+        gates = check_gates(level, values, warnings, hard_flags)
         if all(g.passed for g in gates):
             return level, gates
-    buy_gates = check_gates("Buy", values, warnings)
-    vetoed = any(f in HARD_FLAGS for f in warnings)
+    buy_gates = check_gates("Buy", values, warnings, hard_flags)
+    vetoed = any(f in hard_flags for f in warnings)
     if not vetoed and all(values[key] >= need for key, need in WATCHLIST.items()):
         return "Watchlist", buy_gates
     if values["composite"] >= HOLD_COMPOSITE and not (vetoed and values["composite"] < 50):

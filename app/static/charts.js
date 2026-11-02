@@ -32,9 +32,12 @@ function addLine(chart, data, color, opts = {}) {
 }
 
 function addCandles(chart, d) {
+  // sub-$1 coins need more than the default 2 decimals, or the whole axis reads 0.00
+  const precision = d.precision || 2;
   const candles = chart.addCandlestickSeries({
     upColor: COLORS.up, downColor: COLORS.down, borderVisible: false,
     wickUpColor: COLORS.up, wickDownColor: COLORS.down,
+    priceFormat: { type: 'price', precision, minMove: 10 ** -precision },
   });
   candles.setData(d.candles);
   const volume = chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol' });

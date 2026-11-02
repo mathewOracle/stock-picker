@@ -10,11 +10,14 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
+from app.market import MARKET
+from app.prices import price_text
 from app.signals import Signal
 
 PIVOT_WINDOW = 5        # minor swings -> support/resistance levels
 MAJOR_PIVOT_WINDOW = 10  # major swings -> trend structure & double tops/bottoms
 LEVEL_TOLERANCE = 0.015  # pivots within 1.5% of each other are "the same level"
+YEAR, HALF, MONTH = MARKET.spans.year, MARKET.spans.half, MARKET.spans.month   # 252/126/21 bars; crypto 365/182/30
 
 
 @dataclass(frozen=True)
@@ -113,7 +116,7 @@ def _channel(close: pd.Series, days: int = 60) -> Signal | None:
     slope, intercept = np.polyfit(x, y, 1)
     fitted = slope * x + intercept
     r2 = 1 - ((y - fitted) ** 2).sum() / ((y - y.mean()) ** 2).sum()
-    annual = float(np.exp(slope * 252) - 1)
+    annual = float(np.exp(slope * YEAR) - 1)
     reading = f"{annual:+.0%}/yr pace, R\u00b2 {r2:.2f}"
     if r2 < 0.5:
         return Signal("60-day trend channel", reading, 0.0, 1.0, "Choppy: no clean channel.")
@@ -126,8 +129,8 @@ def _breakout(df: pd.DataFrame) -> Signal | None:
     if len(df) < 120:
         return None
     close = df["Close"].iloc[-1]
-    prior_high = df["High"].iloc[-252:-5].max()
-    year_high = df["High"].iloc[-252:].max()
+    prior_high = df["High"].iloc[-YEAR:-5].max()
+    year_high = df["High"].iloc[-YEAR:].max()
     vol_ratio = df["Volume"].tail(5).mean() / df["Volume"].iloc[-55:-5].mean()
     if close >= prior_high:
         confirmed = vol_ratio >= 1.3
@@ -147,22 +150,22 @@ def _support_resistance(df, atr_now, levels) -> Signal:
     close_10 = df["Close"].iloc[-11]
     broken = [lv for lv in levels if lv.touches >= 3 and close < lv.price < close_10]
     if broken:
-        return Signal("Support / resistance", f"broke {broken[-1].price:,.1f}", -0.8, 1.0,
+        return Signal("Support / resistance", f"broke {price_text(broken[-1].price)}", -0.8, 1.0,
                       f"Broke a {broken[-1].touches}-touch support recently: former floor is now a ceiling.")
     strong = [lv for lv in levels if lv.touches >= 2]
     support = max((lv for lv in strong if lv.price < close), default=None, key=lambda lv: lv.price)
     resistance = min((lv for lv in strong if lv.price > close), default=None, key=lambda lv: lv.price)
     if support and (close - support.price) <= 1.5 * atr_now:
-        return Signal("Support / resistance", f"{support.label or 'support'} {support.price:,.1f}", 0.7, 1.0,
+        return Signal("Support / resistance", f"{support.label or 'support'} {price_text(support.price)}", 0.7, 1.0,
                       "Sitting just above support: a tight stop is possible (good risk/reward).")
     if resistance and (resistance.price - close) <= 1.0 * atr_now:
-        return Signal("Support / resistance", f"{resistance.label or 'resistance'} {resistance.price:,.1f}", -0.4, 1.0,
+        return Signal("Support / resistance", f"{resistance.label or 'resistance'} {price_text(resistance.price)}", -0.4, 1.0,
                       "Right under resistance: wait for a decisive breakout above it.")
     return Signal("Support / resistance", "between levels", 0.0, 1.0, "Trading between support and resistance.")
 
 
 def _squeeze(ind: pd.DataFrame) -> Signal | None:
-    width = ind["bandwidth"].dropna().tail(126)
+    width = ind["bandwidth"].dropna().tail(HALF)
     if len(width) < 60 or width.iloc[-1] > width.quantile(0.10):
         return None
     up = ind["Close"].iloc[-1] > ind["sma50"].iloc[-1]
@@ -173,8 +176,8 @@ def _squeeze(ind: pd.DataFrame) -> Signal | None:
 
 def _pullback(ind: pd.DataFrame) -> Signal | None:
     last = ind.iloc[-1]
-    sma200_rising = last.sma200 > ind["sma200"].iloc[-21]
-    near_high = last.Close >= 0.85 * ind["High"].tail(252).max()
+    sma200_rising = last.sma200 > ind["sma200"].iloc[-MONTH]
+    near_high = last.Close >= 0.85 * ind["High"].tail(YEAR).max()
     in_uptrend = last.Close > last.sma200 and last.sma50 > last.sma200 and sma200_rising and near_high
     near_support_ma = abs(last.Close / last.sma50 - 1) < 0.03 or ind["Low"].tail(5).min() <= ind["ema20"].iloc[-1]
     if in_uptrend and near_support_ma and 38 <= last.rsi <= 55:
@@ -192,17 +195,17 @@ def _double_pattern(df, highs, lows) -> Signal | None:
         neck = df["High"].iloc[i1:i2 + 1].max()
         if i2 - i1 >= 10 and abs(l2 / l1 - 1) < 0.03 and neck >= 1.05 * max(l1, l2):
             if close > neck:
-                return Signal("Double bottom", f"neckline {neck:,.1f} cleared", 1.0, 1.5, "Confirmed W-bottom reversal.")
+                return Signal("Double bottom", f"neckline {price_text(neck)} cleared", 1.0, 1.5, "Confirmed W-bottom reversal.")
             if close > l2:
-                return Signal("Double bottom", f"lows ~{l2:,.1f}, neckline {neck:,.1f}", 0.3, 1.5, "Possible W-bottom forming.")
+                return Signal("Double bottom", f"lows ~{price_text(l2)}, neckline {price_text(neck)}", 0.3, 1.5, "Possible W-bottom forming.")
     if len(highs_r) >= 2:
         (i1, h1), (i2, h2) = highs_r[-2], highs_r[-1]
         trough = df["Low"].iloc[i1:i2 + 1].min()
         if i2 - i1 >= 10 and abs(h2 / h1 - 1) < 0.03 and trough <= 0.95 * min(h1, h2):
             if close < trough:
-                return Signal("Double top", f"neckline {trough:,.1f} broken", -1.0, 1.5, "Confirmed M-top reversal.")
+                return Signal("Double top", f"neckline {price_text(trough)} broken", -1.0, 1.5, "Confirmed M-top reversal.")
             if close < h2:
-                return Signal("Double top", f"highs ~{h2:,.1f}", -0.3, 1.5, "Possible M-top forming.")
+                return Signal("Double top", f"highs ~{price_text(h2)}", -0.3, 1.5, "Possible M-top forming.")
     return None
 
 
@@ -244,7 +247,7 @@ def _divergence(ind: pd.DataFrame) -> Signal | None:
 
 
 def analyze_chart(ind: pd.DataFrame) -> ChartReport:
-    window = ind.tail(252).reset_index(drop=True)
+    window = ind.tail(YEAR).reset_index(drop=True)
     minor_highs, minor_lows = pivots(window, PIVOT_WINDOW)
     highs, lows = pivots(window, MAJOR_PIVOT_WINDOW)
     levels = with_extremes(cluster_levels([p for _, p in minor_highs + minor_lows]), window)

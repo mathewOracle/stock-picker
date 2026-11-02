@@ -23,6 +23,7 @@ import yfinance as yf
 from curl_cffi import requests as curl_requests
 
 from app.market import MARKET
+from app.prices import round_price
 from app.universe import BENCHMARK, INDICES, STOCKS
 
 DB_PATH = MARKET.data_dir / "cache.db"   # each market has its own directory: caches, ledgers and journals never mix
@@ -49,6 +50,7 @@ STATEMENT_ROWS = {
 }
 
 Progress = Callable[[int, int, str], None]
+Fetcher = Callable[[str, curl_requests.Session], dict]   # one symbol's fundamentals payload
 
 
 def _no_progress(done: int, total: int, label: str) -> None:
@@ -116,8 +118,10 @@ def _age(conn: sqlite3.Connection, key: str) -> float | None:
 
 
 def _serialize(frame: pd.DataFrame, fmt: str) -> dict:
+    """Prices keep enough precision for sub-cent coins (round_price); volume keeps two decimals."""
     return {"dates": [d.strftime(fmt) for d in frame.index],
-            **{col: [round(float(v), 2) for v in frame[col]] for col in OHLCV}}
+            **{col: [round_price(float(v)) if col != "Volume" else round(float(v), 2) for v in frame[col]]
+               for col in OHLCV}}
 
 
 def _to_frame(payload: dict) -> pd.DataFrame:
@@ -197,8 +201,12 @@ def _save_frames(conn: sqlite3.Connection, frames: dict[str, pd.DataFrame], pref
         _save(conn, f"{prefix}:{symbol}", _serialize(frame, fmt))
 
 
-def refresh(progress: Progress = _no_progress) -> RefreshResult:
-    """Daily prices for everything; fundamentals only where stale. Raises RefreshError on total failure."""
+def refresh(progress: Progress = _no_progress, fetch: Fetcher | None = None) -> RefreshResult:
+    """Daily prices for everything; fundamentals only where stale. Raises RefreshError on total failure.
+
+    `fetch` gets one symbol's fundamentals: company statements by default, a coin's supply data for crypto.
+    """
+    fetch = fetch or _fetch_fundamentals   # looked up per call, so the module attribute stays the seam
     started, session = time.time(), _fresh_session()
     symbols = list(STOCKS) + list(INDICES)
     progress(0, 1, "daily prices")
@@ -215,7 +223,7 @@ def refresh(progress: Progress = _no_progress) -> RefreshResult:
     progress(1, total, "daily prices")
     fundamentals: dict[str, dict] = {}
     with ThreadPoolExecutor(max_workers=6) as pool:
-        futures = {pool.submit(_retry, _fetch_fundamentals, s, session): s for s in stale}
+        futures = {pool.submit(_retry, fetch, s, session): s for s in stale}
         for done, future in enumerate(as_completed(futures), start=2):
             if (payload := future.result()) is not None:
                 fundamentals[futures[future]] = payload
@@ -228,23 +236,25 @@ def refresh(progress: Progress = _no_progress) -> RefreshResult:
     return RefreshResult(len(prices), failed, time.time() - started, len(fundamentals))
 
 
-def refresh_symbol(symbol: str) -> RefreshResult:
+def refresh_symbol(symbol: str, fetch: Fetcher | None = None) -> RefreshResult:
     """Re-analyse ONE stock: its daily prices (plus the benchmark, which relative strength needs) and its statements, right now.
 
     Statements are always re-fetched here (one stock, one request); the all-stocks refresh only does it when stale.
     """
+    fetch = fetch or _fetch_fundamentals
     if symbol not in STOCKS:
         raise ValueError(f"unknown stock {symbol!r}")
     started, session = time.time(), _fresh_session()
-    prices = _download([symbol, BENCHMARK], session, period="2y")
+    wanted = list(dict.fromkeys([symbol, BENCHMARK]))   # crypto's benchmark (Bitcoin) is itself in the universe
+    prices = _download(wanted, session, period="2y")
     if symbol not in prices:
         raise RefreshError(f"Yahoo returned no prices for {symbol}. Check your internet connection and try again. Showing previously cached data.")
-    statements = _retry(_fetch_fundamentals, symbol, session)
+    statements = _retry(fetch, symbol, session)
     with _connect() as conn:
         _save_frames(conn, prices, "ohlcv", DAILY_FMT)
         if statements is not None:
             _save(conn, FUNDAMENTALS_KEY.format(symbol), statements)
-    failed = sorted({symbol, BENCHMARK} - set(prices)) + ([] if statements is not None else [f"{symbol} (fundamentals)"])
+    failed = sorted(set(wanted) - set(prices)) + ([] if statements is not None else [f"{symbol} (fundamentals)"])
     return RefreshResult(len(prices), failed, time.time() - started, int(statements is not None))
 
 
