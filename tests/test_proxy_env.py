@@ -37,7 +37,7 @@ def test_a_proxy_you_exported_is_used_while_it_is_reachable():
 
 
 @needs_nc
-@pytest.mark.parametrize("dead", ["http://sysproxy.invalid:8080", "http://127.0.0.1:1"])   # unresolvable host, closed port
+@pytest.mark.parametrize("dead", ["http://proxy.invalid:3128", "http://127.0.0.1:1"])   # unresolvable host, closed port
 def test_an_unreachable_proxy_is_dropped_with_a_notice_so_the_app_goes_direct(dead):
     https, http, stderr = run_proxy_env(HTTPS_PROXY=dead, HTTP_PROXY=dead)
     assert (https, http) == ("unset", "unset") and "going direct" in stderr
