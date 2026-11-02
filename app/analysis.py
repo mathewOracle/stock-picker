@@ -17,7 +17,7 @@ from app.research import ml, model_view
 from app.research.features import features
 from app.research.verdict import Validation, validate
 from app.scoring import Gate, composite, decide, fundamental_flags
-from app.signals import Signal, best, score, worst
+from app.signals import Signal, score, thesis
 from app.technical import beta, price_metrics, traded_value
 from app.tradeplan import TradePlan
 from app.universe import BENCHMARK, INDICES, STOCKS, VIX
@@ -56,16 +56,7 @@ class StockReport:
     @property
     def thesis(self) -> list[str]:
         """One line per pillar: strongest positive and the main risk."""
-        lines = []
-        for label, value, signals in self.pillars:
-            good, bad = best(signals), worst(signals)
-            parts = [f"{label} {value:.0f}"]
-            if good:
-                parts.append(f"+ {good.name}: {good.reading}")
-            if bad:
-                parts.append(f"- {bad.name}: {bad.reading}")
-            lines.append(" | ".join(parts))
-        return lines
+        return thesis(self.pillars)
 
 
 @dataclass

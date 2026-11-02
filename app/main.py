@@ -1,6 +1,5 @@
 """FastAPI app: the order desk (home), market overview, stock deep-dives, intraday scanner, research and refresh jobs."""
 
-import math
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
@@ -25,6 +24,7 @@ from app.research.backtest import MAX_HOLD as SWING_MAX_HOLD
 from app.research.ml import PROBA_GATE
 from app.scoring import BUY_LEVELS, GATES, PILLAR_WEIGHTS, VERDICTS, WATCHLIST
 from app.universe import STOCKS
+from app.web import FILTERS, money_big, pct, pe, refresh_router  # noqa: F401  (pct/pe/money_big: tests import them from here)
 
 BASE = Path(__file__).resolve().parent
 app = FastAPI(title=MARKET.app_name)
@@ -35,44 +35,13 @@ jobs = {"daily": RefreshJob(data.refresh), "intraday": RefreshJob(intraday_archi
         "research": RefreshJob(pipeline.run_all)}
 
 
-def _is_nan(value) -> bool:
-    return value is None or (isinstance(value, float) and math.isnan(value))
-
-
-def pct(value, signed: bool = True, digits: int = 1) -> str:
-    return "–" if _is_nan(value) else f"{value * 100:{'+' if signed else ''}.{digits}f}%"
-
-
-def num(value, digits: int = 1) -> str:
-    return "–" if _is_nan(value) else f"{value:,.{digits}f}"
-
-
-def pe(value) -> str:
-    return "loss" if not _is_nan(value) and value >= 1000 else num(value)
-
-
-def money_big(value) -> str:
-    """A large amount (market cap) in the market's habitual unit: ₹1,234 Cr / $1,234M."""
-    return "–" if _is_nan(value) else MARKET.money.big(value)
-
-
-def money_units(value) -> str:
-    """An amount already in big units (the traded-value metric)."""
-    return "–" if _is_nan(value) else MARKET.money.big_units(value)
-
-
-def timestamp(value) -> str:
-    return "never" if value is None else datetime.fromtimestamp(value).strftime("%d %b %Y, %H:%M")
-
-
 def session_state() -> dict:
     """The exchange's phase right now, for the live dot in the header (holidays and half-days included)."""
     label, is_open, _ = intraday.market_phase(datetime.now(MARKET.clock.tz))
     return {"label": label, "open": is_open}
 
 
-templates.env.filters.update(pct=pct, num=num, pe=pe, money_big=money_big, money_units=money_units, timestamp=timestamp,
-                              short_symbol=MARKET.short_symbol, evidence_note=intraday.describe_evidence)
+templates.env.filters.update(FILTERS)
 templates.env.globals.update(square_off=f"{SQUARE_OFF:%H:%M}", no_new_entries=f"{NO_NEW_ENTRIES:%H:%M}",
                              swing_max_hold=SWING_MAX_HOLD,  # the swing backtest's time exit, in sessions
                              long_bias=intraday.LONG_BIAS, short_bias=intraday.SHORT_BIAS,
@@ -257,26 +226,4 @@ def research_panel(request: Request, scope: Mode):
 
 # ---------- background refresh jobs ----------
 
-def _job(name: str) -> RefreshJob:
-    if name not in jobs:
-        raise HTTPException(404, "Unknown job")
-    return jobs[name]
-
-
-def _status(request: Request, name: str) -> HTMLResponse:
-    status = _job(name).snapshot()
-    response = templates.TemplateResponse(request, "_refresh_status.html", {"s": status, "name": name})
-    if status.state == "done":
-        response.headers["HX-Refresh"] = "true"  # new data -> reload the page
-    return response
-
-
-@app.post("/refresh/{name}", response_class=HTMLResponse)
-def refresh(request: Request, name: str):
-    _job(name).start()  # no-op if already running; either way we report live status
-    return _status(request, name)
-
-
-@app.get("/refresh/{name}/status", response_class=HTMLResponse)
-def refresh_status(request: Request, name: str):
-    return _status(request, name)
+app.include_router(refresh_router(jobs, templates))

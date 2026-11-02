@@ -38,3 +38,13 @@ def describe(math_: dict) -> str:
     if math_["won"] is not None:
         text += f"; backtest won {math_['won']:.0%} of {math_['n']} trades"
     return text
+
+
+def describe_evidence(block: dict) -> str:
+    """A playbook's backtest evidence in one phrase (scanner verdicts and the desk/intraday cards)."""
+    if block["status"] == "not backtested":
+        return "not backtested yet"
+    if not block.get("n"):
+        return "never fired in the backtest"
+    return (f"backtest {block['status']} ({block['n']} trades, avg {block['avg_return']:+.2%} after costs, "
+            f"t {block['t_stat']:.1f})")

@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from app.market import MARKET
-from app.market.profile import Spans
+from app.market.profile import Market, Spans
 from app.prices import price_text
 from app.signals import Signal, grade
 
@@ -49,10 +49,13 @@ def beta(close: pd.Series, benchmark: pd.Series | None, days: int = SPANS.year) 
     return float(stock.cov(index) / index.var())
 
 
-def traded_value(df: pd.DataFrame, days: int = 20) -> float:
-    """Average daily traded value in the market's big unit (Rs crore, $ million) -- the liquidity yardstick."""
-    value = df["Volume"] if MARKET.volume_in_money else df["Close"] * df["Volume"]
-    return float(value.tail(days).mean() / MARKET.money.big_divisor)
+def traded_value(df: pd.DataFrame, days: int = 20, market: Market = MARKET) -> float:
+    """Average daily traded value in the market's big unit (Rs crore, $ million) -- the liquidity yardstick.
+
+    Stock volume is shares (so value = close x volume); Yahoo's crypto volume is already dollars.
+    """
+    value = df["Volume"] if market.volume_in_money else df["Close"] * df["Volume"]
+    return float(value.tail(days).mean() / market.money.big_divisor)
 
 
 def price_metrics(close: pd.Series, year: int = SPANS.year) -> dict:

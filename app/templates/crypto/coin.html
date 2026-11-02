@@ -1,0 +1,145 @@
+{% extends "crypto/base.html" %}
+{% from "_macros.html" import badge, score_meter, signal_table %}
+{% block title %}{{ r.name }} - {{ market.app_name }}{% endblock %}
+{% block content %}
+{% set m = r.metrics %}
+<p><a href="/" class="text-blue-800 underline">&larr; Back to all coins</a></p>
+
+<div class="mt-3 flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold">{{ r.name }} <span class="text-base font-normal text-slate-700">{{ r.ticker }}</span></h1>
+    <p class="text-slate-700">{{ r.category }} &middot; Market cap {{ m.market_cap | money_big }} &middot; Daily close (UTC)</p>
+  </div>
+  <div class="text-right">
+    <p class="text-3xl font-bold">${{ m.price | price }}</p>
+    <p>{{ badge(r.verdict) }} <span class="ml-2 text-xl font-bold">{{ r.scores.composite | num }}</span><span class="text-sm text-slate-700">/100</span></p>
+  </div>
+</div>
+
+<div class="mt-3 flex flex-wrap items-center gap-3">
+  <button hx-post="/coin/{{ r.symbol }}/refresh" hx-target="#coin-notice" hx-swap="innerHTML" class="btn btn-sm btn-dark">Re-analyse {{ r.ticker }} now</button>
+  <div id="coin-notice" aria-live="polite"></div>
+</div>
+
+{# ---- decision ---- #}
+<div class="mt-4 grid gap-4 lg:grid-cols-3">
+  <section aria-labelledby="dec-h" class="rounded border border-slate-300 bg-white p-4 lg:col-span-2">
+    <h2 id="dec-h" class="mb-2 font-bold">Decision checklist ({{ 'Strong Buy' if r.verdict == 'Strong Buy' else 'Buy' }} gates)</h2>
+    <ul class="space-y-1 text-sm">
+      {% for g in r.gates %}
+      <li class="flex justify-between gap-2 border-b border-slate-100 pb-1">
+        <span>{{ g.name | replace('Fundamental', 'Tokenomics') }}</span>
+        <span><span class="text-slate-700">{{ g.shown }}</span>
+          <strong class="ml-2 {{ 'text-green-800' if g.passed else 'text-red-800' }}">{{ 'Pass' if g.passed else 'Fail' }}</strong></span>
+      </li>
+      {% endfor %}
+    </ul>
+    <h3 class="mt-3 text-sm font-bold">Thesis in one breath</h3>
+    <ul class="text-sm text-slate-800">{% for line in r.thesis %}<li>{{ line }}</li>{% endfor %}</ul>
+    {% if r.flags %}
+    <ul class="mt-3 flex flex-wrap gap-2" aria-label="Warning flags">
+      {% for f in r.flags %}<li class="rounded border border-amber-600 bg-amber-50 px-2 py-0.5 text-sm text-amber-900">{{ f }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if 'Coarse price data' in r.flags %}
+    <p class="mt-3 rounded border-l-4 border-red-700 bg-red-50 p-2 text-sm text-red-950"><strong>Price data too coarse to trust.</strong>
+      Yahoo rounds daily prices to 6 decimals, which leaves this coin only one or two significant figures, so the chart is a staircase.
+      The technical, chart and trade-plan numbers below are unreliable, and this coin cannot be rated a Buy.</p>
+    {% endif %}
+    <p class="mt-3 rounded border border-slate-400 bg-slate-50 p-2 text-xs text-slate-900">These rules have <strong>not been backtested on crypto</strong>.
+      A Buy here means "the checks line up", not "this has worked before".</p>
+  </section>
+
+  <section aria-labelledby="plan-h" class="rounded border border-slate-300 bg-white p-4">
+    <h2 id="plan-h" class="mb-2 font-bold">Trade plan</h2>
+    <dl class="grid grid-cols-2 gap-y-1 text-sm">
+      <dt class="text-slate-700">Entry (last close)</dt><dd class="text-right font-semibold">{{ r.plan.entry | price }}</dd>
+      <dt class="text-slate-700">Stop loss</dt><dd class="text-right font-semibold text-red-800">{{ r.plan.stop | price }} ({{ (-r.plan.risk_pct) | pct }})</dd>
+      <dt class="text-slate-700">Target 1</dt><dd class="text-right font-semibold text-green-800">{{ r.plan.target1 | price }} ({{ (r.plan.target1 / r.plan.entry - 1) | pct }})</dd>
+      <dt class="text-slate-700">Target 2</dt><dd class="text-right font-semibold text-green-800">{{ r.plan.target2 | price }} ({{ (r.plan.target2 / r.plan.entry - 1) | pct }})</dd>
+      <dt class="text-slate-700">Reward : risk</dt><dd class="text-right font-semibold">{{ r.plan.reward_risk | num }} : 1</dd>
+      <dt class="text-slate-700">ATR (14)</dt><dd class="text-right">{{ m.atr | price }}</dd>
+      <dt class="text-slate-700">vs 20-EMA</dt><dd class="text-right">{{ m.extension | num }} ATR</dd>
+      <dt class="text-slate-700">Position for 1% risk</dt><dd class="text-right font-semibold">{{ ([0.01 / r.plan.risk_pct, 1] | min) | pct(false, 0) if r.plan.risk_pct else '–' }} of capital</dd>
+    </dl>
+    <p class="mt-2 text-xs text-slate-700">Stop basis: {{ r.plan.stop_basis }}. Targets are the next significant resistance levels (2R/3R if none).
+      "Position for 1% risk" is how much of your capital to put in so that hitting the stop costs 1% of it (capped at 100%: no leverage).
+      Coins can be bought in fractions, so any size works.</p>
+    <h3 class="mt-3 text-sm font-bold">How to enter and exit</h3>
+    {% if r.verdict not in ('Strong Buy', 'Buy') %}
+    <p class="mt-1 rounded border border-slate-400 bg-slate-50 p-2 text-xs text-slate-900">This coin is <strong>{{ r.verdict }}</strong>, not a Buy: these steps show how the plan would be traded, not a suggestion to trade it.</p>
+    {% endif %}
+    <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm" aria-label="How to enter and exit this trade">
+      <li><strong>Enter</strong> with {{ market.wording.swing_product }}. Skip it if price is already at or below the stop ({{ r.plan.stop | price }}) or at or above T1 ({{ r.plan.target1 | price }}).</li>
+      <li><strong>Straight after the fill</strong>, place {{ market.wording.swing_exit_order }}: stop at <span class="text-red-800">{{ r.plan.stop | price }}</span>,
+        target at T1 <span class="text-green-800">{{ r.plan.target1 | price }}</span>. {{ market.wording.swing_exit_why }}</li>
+      <li><strong>Gaps happen at any hour</strong>: a stop can fill well below its price in a crash. Size for that.</li>
+    </ol>
+  </section>
+</div>
+
+{# ---- tokenomics at a glance ---- #}
+<section aria-labelledby="tok-h" class="mt-6 rounded border border-slate-300 bg-white p-4">
+  <h2 id="tok-h" class="mb-3 font-bold">Supply and valuation</h2>
+  <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm md:grid-cols-4">
+    {% for label, val in [
+      ('Market cap', m.market_cap | money_big), ('Fully diluted value', m.fdv | money_big), ('FDV / market cap', (m.fdv_ratio | num(2)) ~ 'x'),
+      ('Circulating supply', m.circulating | num(0)), ('Max supply', (m.max_supply | num(0)) if m.has_cap else 'none (no cap)'),
+      ('Total supply', m.total_supply | num(0)), ('Share circulating', m.unlocked | pct(false, 0)),
+      ('Supply inflation (measured)', m.inflation | pct), ('Supply history', m.supply_days ~ ' of ' ~ supply_days_needed ~ '+ days'),
+      ('24h volume', m.volume_24h | money_big), ('Turnover (3M avg / cap)', m.turnover | pct(false, 1)),
+      ('All-time high', '$' ~ (m.ath | price)), ('From all-time high', m.off_ath | pct(true, 0)),
+      ('All-time low', '$' ~ (m.atl | price)), ('Times above all-time low', (m.x_from_atl | num(1)) ~ 'x'),
+      ('Age', (m.age_years | num(1)) ~ ' years'), ('Beta vs Bitcoin', m.beta | num(2)) ] %}
+    <div class="flex justify-between border-b border-slate-100"><dt class="text-slate-700">{{ label }}</dt><dd class="font-medium">{{ val }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+
+{# ---- charts ---- #}
+<section aria-labelledby="chart-h" class="mt-6 rounded border border-slate-300 bg-white p-4">
+  <h2 id="chart-h" class="font-bold">Chart (250 days, daily)</h2>
+  <p class="mb-2 text-xs text-slate-700">
+    Candles with 20-EMA (sky), 50-DMA (violet), 200-DMA (orange), Bollinger bands (grey dashed), Supertrend (teal),
+    support/resistance (grey dotted) and the trade plan (blue entry, red stop, green targets). Dollar volume at the bottom.
+  </p>
+  <div id="price-chart" class="h-[420px]" role="img"
+       aria-label="Candlestick chart for {{ r.name }} with moving averages, levels and trade plan. Key readings are listed in the analysis tables below."></div>
+  <h3 class="mt-4 text-sm font-bold">RSI (14)</h3>
+  <div id="rsi-chart" class="h-[120px]" role="img" aria-label="RSI line chart, latest {{ m.rsi | num }}"></div>
+  <h3 class="mt-4 text-sm font-bold">MACD (12, 26, 9)</h3>
+  <div id="macd-chart" class="h-[140px]" role="img" aria-label="MACD line, signal line and histogram"></div>
+</section>
+
+{# ---- the three pillars ---- #}
+{% for label, value, signals in r.pillars %}
+<section aria-labelledby="p{{ loop.index }}-h" class="mt-6 rounded border border-slate-300 bg-white p-4">
+  <div class="mb-2 flex items-center justify-between">
+    <h2 id="p{{ loop.index }}-h" class="font-bold">{{ label }} analysis</h2>
+    <p><span class="text-xl font-bold">{{ value | round | int }}</span><span class="text-sm text-slate-700">/100</span></p>
+  </div>
+  {{ score_meter(label, value) }}
+  {{ signal_table(signals, label ~ ' checks') }}
+  {% if label == 'Tokenomics' %}
+  <p class="mt-2 text-xs text-slate-700">Not scored (no free, reliable source here): on-chain activity, developer activity, token-unlock calendars and staking yields.</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<section aria-labelledby="num-h" class="mt-6 rounded border border-slate-300 bg-white p-4">
+  <h2 id="num-h" class="mb-3 font-bold">Price numbers</h2>
+  <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm md:grid-cols-4">
+    {% for label, val in [
+      ('1D return', m.ret_1d | pct), ('1M return', m.ret_1m | pct), ('3M return', m.ret_3m | pct), ('1Y return', m.ret_12m | pct),
+      ('vs 200-DMA', m.pct_vs_200dma | pct), ('From 52w closing high', m.off_high | pct), ('Volatility 1Y (ann.)', m.vol | pct(false)),
+      ('Volatility 30d (ann.)', m.vol_30d | pct(false)), ('Max drawdown 1Y', m.max_dd | pct), ('RSI (14)', m.rsi | num),
+      ('Avg daily volume (20d)', m.traded_value | money_units) ] %}
+    <div class="flex justify-between border-b border-slate-100"><dt class="text-slate-700">{{ label }}</dt><dd class="font-medium">{{ val }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+
+<script src="/static/vendor/lightweight-charts.js"></script>
+<script src="/static/charts.js"></script>
+<script>renderCharts({{ chart | tojson }});</script>
+{% endblock %}

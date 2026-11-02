@@ -1,0 +1,45 @@
+{% from "_macros.html" import badge, delta, score_cell %}
+<div class="overflow-x-auto rounded border border-slate-300 bg-white">
+  <table class="w-full text-left text-sm">
+    <caption class="sr-only">{{ reports | length }} coins ranked by composite score</caption>
+    <thead class="bg-slate-100"><tr>
+      <th scope="col" class="p-2">#</th><th scope="col" class="p-2">Coin</th><th scope="col" class="p-2">Category</th>
+      <th scope="col" class="p-2">Score</th>
+      <th scope="col" class="p-2"><abbr title="Tokenomics (fundamental) score">Token.</abbr></th>
+      <th scope="col" class="p-2"><abbr title="Technical score">Tech.</abbr></th>
+      <th scope="col" class="p-2"><abbr title="Chart-pattern score">Chart</abbr></th>
+      <th scope="col" class="p-2">Verdict</th><th scope="col" class="p-2">Price ($)</th>
+      <th scope="col" class="p-2">1M</th><th scope="col" class="p-2">3M</th><th scope="col" class="p-2">1Y</th>
+      <th scope="col" class="p-2"><abbr title="Distance from all-time high">Off ATH</abbr></th>
+      <th scope="col" class="p-2">Market cap</th>
+      <th scope="col" class="p-2"><abbr title="Fully diluted value divided by market cap: future dilution">FDV/MC</abbr></th>
+      <th scope="col" class="p-2"><abbr title="Reward to risk of the trade plan">R:R</abbr></th>
+      <th scope="col" class="p-2">Flags</th>
+    </tr></thead>
+    <tbody>
+    {% for r in reports %}
+      {% set m = r.metrics %}
+      <tr class="border-t border-slate-200 hover:bg-slate-50">
+        <td class="p-2">{{ loop.index }}</td>
+        <th scope="row" class="p-2 font-medium"><a class="text-blue-800 underline" href="/coin/{{ r.symbol }}">{{ r.name }}</a>
+          <span class="text-xs font-normal text-slate-700">{{ r.ticker }}</span></th>
+        <td class="p-2">{{ r.category }}</td>
+        <td class="p-2">{{ score_cell(r.scores.composite) }}</td>
+        <td class="p-2">{{ score_cell(r.scores.fundamental) }}</td>
+        <td class="p-2">{{ score_cell(r.scores.technical) }}</td>
+        <td class="p-2">{{ score_cell(r.scores.chart) }}</td>
+        <td class="p-2">{{ badge(r.verdict) }}</td>
+        <td class="p-2">{{ m.price | price }}</td>
+        <td class="p-2">{{ delta(m.ret_1m) }}</td><td class="p-2">{{ delta(m.ret_3m) }}</td><td class="p-2">{{ delta(m.ret_12m) }}</td>
+        <td class="p-2">{{ m.off_ath | pct(true, 0) }}</td>
+        <td class="p-2">{{ m.market_cap | money_big }}</td>
+        <td class="p-2">{{ m.fdv_ratio | num(2) }}</td>
+        <td class="p-2">{{ r.plan.reward_risk | num }}</td>
+        <td class="p-2 text-xs text-slate-800">{{ r.flags | join(', ') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="17" class="p-4 text-center text-slate-700">No coins match those filters.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -18,9 +18,10 @@
 <span class="font-semibold {{ 'text-green-800' if value >= 60 else ('text-red-800' if value < 40 else 'text-slate-900') }}">{{ value | round | int }}</span>
 {%- endmacro %}
 
-{% macro pillar_scores(r) -%}
+{# fundamental_label: coins call their fundamental pillar "Tokenomics" #}
+{% macro pillar_scores(r, fundamental_label='Fund.') -%}
 <dl class="grid grid-cols-3 gap-2 text-center text-xs">
-  {% for key, label in [('fundamental', 'Fund.'), ('technical', 'Tech.'), ('chart', 'Chart')] %}
+  {% for key, label in [('fundamental', fundamental_label), ('technical', 'Tech.'), ('chart', 'Chart')] %}
   <div class="metric-panel px-2 py-2"><dt class="text-slate-700">{{ label }}</dt><dd class="text-lg leading-tight">{{ score_cell(r.scores[key]) }}</dd></div>
   {% endfor %}
 </dl>

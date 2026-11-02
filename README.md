@@ -1,26 +1,30 @@
-# Stock Picker (India + US)
+# Stock Picker (India + US + Crypto)
 
-One engine, two markets, one service: `./serve.sh` serves India and US on one port with **India / US tabs** at the
-top. Each market still runs in its own engine process (`STOCK_PICKER_MARKET`), so their data and evidence never mix:
+One engine, three markets, one service: `./serve.sh` serves India, US and Crypto on one port with **India / US /
+Crypto tabs** at the top. Each market still runs in its own engine process (`STOCK_PICKER_MARKET`), so their data and
+evidence never mix:
 
-| | India (default) | US |
-|---|---|---|
-| Universe | ~63 NSE large caps, benchmark Nifty 50 | 78 NYSE/Nasdaq large caps, benchmark S&P 500 |
-| Hours | 09:15-15:30 IST | 09:30-16:00 ET, NYSE holidays + half-days (exchange_calendars), DST-aware |
-| Costs per side | 0.15% swing / 0.06% intraday | 0.05% both (spread, slippage, SEC/FINRA fees) |
-| Order tickets (dry run) | Angel One SmartAPI bodies | broker-neutral: limit entry + one OCO exit |
-| Rules on every ticket | (none yet) | FINRA PDT, Reg SHO 200/201/203, Reg T, T+1, Rule 612, wash sale: [`docs/us/US_RULES.md`](docs/us/US_RULES.md) |
-| Data / docs | `data/`, `docs/` | `data-us/`, `docs/us/` (evidence never mixes) |
-| Port | 61287 (both, tabs) or 61287 alone | 61287 (both, tabs) or 61288 alone |
+| | India (default) | US | Crypto |
+|---|---|---|---|
+| Universe | ~63 NSE large caps, benchmark Nifty 50 | 78 NYSE/Nasdaq large caps, benchmark S&P 500 | 33 largest coins (no stablecoins), benchmark Bitcoin |
+| Hours | 09:15-15:30 IST | 09:30-16:00 ET, NYSE holidays + half-days (exchange_calendars), DST-aware | 24/7, UTC days; 365-bar year |
+| Costs per side | 0.15% swing / 0.06% intraday | 0.05% both (spread, slippage, SEC/FINRA fees) | 0.2% (taker fee, spread, slippage) |
+| Fundamentals | statements, valuation vs sector | statements, valuation vs sector | tokenomics: size, liquidity, dilution, supply cap and inflation, age, ATH distance: [`docs/crypto/CRYPTO_ANALYSIS.md`](docs/crypto/CRYPTO_ANALYSIS.md) |
+| Order tickets (dry run) | Angel One SmartAPI bodies | broker-neutral: limit entry + one OCO exit | none: research pages and trade plans only |
+| Rules on every ticket | (none yet) | FINRA PDT, Reg SHO 200/201/203, Reg T, T+1, Rule 612, wash sale: [`docs/us/US_RULES.md`](docs/us/US_RULES.md) | n/a |
+| Data / docs | `data/`, `docs/` | `data-us/`, `docs/us/` (evidence never mixes) | `data-crypto/`, `docs/crypto/` |
+| Port | 61287 (all, tabs) or 61287 alone | 61287 (all, tabs) or 61288 alone | 61287 (all, tabs) or 61289 alone |
 
-Everything else (analysis, verdict gates, swing and intraday backtests, research ledger, forward test, order desk)
-is the same code. A market is a data-only profile in `app/market/<market>.py`; US research is pre-registered in
-[`docs/us/SWING_RESEARCH_PLAN.md`](docs/us/SWING_RESEARCH_PLAN.md).
+For stocks everything else (analysis, verdict gates, swing and intraday backtests, research ledger, forward test, order
+desk) is the same code. A market is a data-only profile in `app/market/<market>.py`; US research is pre-registered in
+[`docs/us/SWING_RESEARCH_PLAN.md`](docs/us/SWING_RESEARCH_PLAN.md). Crypto reuses the technical, chart, trade-plan and
+gate code with its own tokenomics pillar and web app (`app/crypto/`); it has no desk, intraday scanner or backtest yet.
 
 ```bash
-./serve.sh                 # India + US on :61287, tabs at the top (app/gateway.py)
+./serve.sh                 # India + US + Crypto on :61287, tabs at the top (app/gateway.py)
 ./serve.sh india           # India only on :61287
 ./serve.sh us              # US only on :61288
+./serve.sh crypto          # Crypto only on :61289
 STOCK_PICKER_MARKET=us .venv/bin/python -m app.research all    # US research, same CLI
 ```
 
@@ -64,9 +68,9 @@ uv pip install -e . --group dev
 
 ### 2. Start and stop the service
 
-`serve.sh` starts the app on **http://127.0.0.1:61287** with both markets: the India / US tabs at the top switch
+`serve.sh` starts the app on **http://127.0.0.1:61287** with every market: the India / US / Crypto tabs at the top switch
 market (`/?market=us` does the same, and a cookie remembers your choice). Behind that one port, a small gateway
-(`app/gateway.py`) runs one engine per market as internal workers on 61291 (India) and 61292 (US), starts them with it
+(`app/gateway.py`) runs one engine per market as internal workers on 61291 (India), 61292 (US) and 61293 (Crypto), starts them with it
 and stops them with it. It refuses to start if a port is taken. No proxy is built in: on a network that needs one, `export HTTPS_PROXY=...`
 first; it is used only while reachable, and dropped (going direct) when it is not.
 
@@ -74,7 +78,7 @@ first; it is used only while reachable, and dropped (going direct) when it is no
 |---|---|
 | Start (foreground; `Ctrl+C` stops it) | `./serve.sh` |
 | Start on another port | `./serve.sh 61297` |
-| One market only | `./serve.sh india` (:61287) or `./serve.sh us` (:61288) |
+| One market only | `./serve.sh india` (:61287), `./serve.sh us` (:61288) or `./serve.sh crypto` (:61289) |
 | Start in the background, with a log | `nohup ./serve.sh > /tmp/isp_server.log 2>&1 &` |
 | Watch the log | `tail -f /tmp/isp_server.log` |
 | Check it's up (prints `200`) | `curl -s --noproxy '*' -o /dev/null -w "%{http_code}\n" http://127.0.0.1:61287/` |

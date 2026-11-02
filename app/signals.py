@@ -53,3 +53,17 @@ def grade(value: float, bands: list[tuple[float, float]], below: float) -> float
         if value >= threshold:
             return points
     return below
+
+
+def thesis(pillars: list[tuple[str, float, list[Signal]]]) -> list[str]:
+    """One line per pillar: its score, strongest positive and main risk (stocks and coins alike)."""
+    lines = []
+    for label, value, signals in pillars:
+        good, bad = best(signals), worst(signals)
+        parts = [f"{label} {value:.0f}"]
+        if good:
+            parts.append(f"+ {good.name}: {good.reading}")
+        if bad:
+            parts.append(f"- {bad.name}: {bad.reading}")
+        lines.append(" | ".join(parts))
+    return lines

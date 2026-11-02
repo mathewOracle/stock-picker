@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{# The crypto pages: same shell as the stock app, with crypto's own subtitle, navigation and risk warning #}
+{% block subtitle %}{{ market.exchange }} &middot; {{ market.stocks | length }} coins &middot; Technical &middot; Tokenomics{% endblock %}
+{% block header_actions %}
+<nav aria-label="Main" class="hidden gap-1 sm:flex">
+  <a href="/" {% if nav == 'coins' and request.url.path == '/' %}aria-current="page"{% endif %} class="btn btn-sm btn-quiet aria-[current=page]:bg-white aria-[current=page]:shadow-sm">Coins</a>
+</nav>
+{% endblock %}
+{% block disclaimer %}
+<strong>Not investment advice.</strong> Crypto-assets are highly volatile and can lose most or all of their value; many
+coins never recover from a crash. Suggestions come from a mechanical, backward-looking rule set built on Yahoo Finance
+data (sourced from CoinMarketCap), which can be delayed or wrong, and they have <strong>not been backtested</strong> for
+crypto yet. Exchanges can fail or freeze withdrawals, and taxes on crypto gains can be steep (in India: a flat 30% plus
+1% TDS on transfers). Do your own research or talk to {{ market.wording.adviser }} before investing.
+{% endblock %}

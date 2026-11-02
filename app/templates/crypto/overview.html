@@ -1,0 +1,146 @@
+{% extends "crypto/base.html" %}
+{% from "_macros.html" import badge, delta, pillar_scores, refresh_button %}
+{% block title %}Crypto - {{ market.app_name }}{% endblock %}
+{% block content %}
+{% set refresh %}{{ refresh_button('daily', 'Refresh data' if o.reports else 'Fetch crypto data') }}{% endset %}
+
+{% if not o.reports %}
+<section class="rounded border border-slate-300 bg-white p-8 text-center">
+  <h1 class="text-xl font-bold">No crypto data yet</h1>
+  <p class="my-3 text-slate-700">Fetch two years of daily prices and supply data for {{ market.stocks | length }} coins (about a minute).</p>
+  <div class="flex justify-center">{{ refresh }}</div>
+</section>
+{% else %}
+
+<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+  <div>
+    <h1 class="text-2xl font-bold">Crypto snapshot <span class="text-base font-normal text-slate-700">daily close (UTC) of {{ o.as_of }}</span></h1>
+    <p class="text-sm text-slate-700">Data refreshed {{ o.refreshed_at | timestamp }}. Prices in US dollars; coins trade 24/7, so a "day" is a UTC calendar day.</p>
+  </div>
+  {{ refresh }}
+</div>
+
+{% set tones = {'red': 'border-red-700 bg-red-50', 'amber': 'border-amber-600 bg-amber-50',
+                'green': 'border-green-700 bg-green-50', 'slate': 'border-slate-400 bg-slate-100'} %}
+<section aria-labelledby="regime-h" class="mb-6 rounded border-l-4 p-4 {{ tones[o.regime.tone] }}">
+  <h2 id="regime-h" class="text-lg font-bold">Crypto regime: {{ o.regime.label }}</h2>
+  <p>{{ o.regime.detail }}</p>
+</section>
+
+<section aria-labelledby="ctx-h" class="mb-6">
+  <h2 id="ctx-h" class="sr-only">Crypto market context</h2>
+  <dl class="grid grid-cols-2 gap-3 md:grid-cols-3">
+    <div class="metric-panel p-3"><dt class="text-xs text-slate-700">Bitcoin 30-day volatility</dt>
+      <dd class="text-xl font-bold">{{ o.btc_vol | pct(false, 0) }}</dd><dd class="text-xs text-slate-700">a year; above 70% is violent</dd></div>
+    <div class="metric-panel p-3"><dt class="text-xs text-slate-700">Altcoin season index</dt>
+      <dd class="text-xl font-bold">{{ o.alt_season.share | pct(false, 0) if o.alt_season else '–' }}</dd>
+      <dd class="text-xs text-slate-700">{{ o.alt_season.label ~ ': ' if o.alt_season }}altcoins beating Bitcoin over 3 months</dd></div>
+    <div class="metric-panel p-3"><dt class="text-xs text-slate-700">Bitcoin dominance</dt>
+      <dd class="text-xl font-bold">{{ o.dominance | pct(false, 0) }}</dd><dd class="text-xs text-slate-700">of the {{ o.reports | length }} tracked coins' market cap</dd></div>
+    <div class="metric-panel p-3"><dt class="text-xs text-slate-700">Breadth</dt>
+      <dd class="text-xl font-bold">{{ o.breadth_200dma | pct(false, 0) }}</dd><dd class="text-xs text-slate-700">of coins above their 200-day average</dd></div>
+    <div class="metric-panel p-3"><dt class="text-xs text-slate-700">Tracked market cap</dt>
+      <dd class="text-xl font-bold">{{ o.total_cap | money_big }}</dd><dd class="text-xs text-slate-700">stablecoins excluded</dd></div>
+  </dl>
+</section>
+
+{% if o.indices %}
+<section aria-labelledby="macro-h" class="mb-6">
+  <h2 id="macro-h" class="mb-2 text-lg font-bold">Macro backdrop</h2>
+  <p class="mb-2 text-sm text-slate-700">Crypto tends to rise with risk appetite (stocks up) and fall when the dollar strengthens.</p>
+  <div class="overflow-x-auto rounded border border-slate-300 bg-white">
+    <table class="w-full text-left text-sm">
+      <caption class="sr-only">Macro context: stock indices, the US dollar and gold</caption>
+      <thead class="bg-slate-100"><tr><th scope="col" class="p-2">Market</th><th scope="col" class="p-2">Last</th>
+        <th scope="col" class="p-2">1D</th><th scope="col" class="p-2">1M</th><th scope="col" class="p-2">3M</th><th scope="col" class="p-2">vs 200-DMA</th></tr></thead>
+      <tbody>{% for i in o.indices %}
+        <tr class="border-t border-slate-200"><th scope="row" class="p-2 font-medium">{{ i.name }}</th><td class="p-2">{{ i.price | num(2) }}</td>
+          <td class="p-2">{{ delta(i.ret_1d) }}</td><td class="p-2">{{ delta(i.ret_1m) }}</td><td class="p-2">{{ delta(i.ret_3m) }}</td><td class="p-2">{{ delta(i.pct_vs_200dma) }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section aria-labelledby="buy-h" class="mb-6">
+  <h2 id="buy-h" class="text-lg font-bold">Rule-based buys</h2>
+  <p class="mb-2 text-sm text-slate-700">Coins that pass <em>every</em> gate: tokenomics, technicals, chart, reward/risk and no hard red flag.
+    <strong>Not backtested for crypto yet</strong>: treat these as a shortlist to research, not as validated signals.</p>
+  <div class="grid gap-3 md:grid-cols-2">
+    {% for r in buys %}
+    <a href="/coin/{{ r.symbol }}" class="block rounded border border-slate-300 bg-white p-4 hover:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+      <div class="flex items-start justify-between gap-2">
+        <div><p class="text-lg font-bold">{{ r.name }}</p><p class="text-sm text-slate-700">{{ r.ticker }} &middot; {{ r.category }}</p></div>
+        <div class="text-right">{{ badge(r.verdict) }}
+          <p class="text-2xl font-bold" aria-label="Composite score {{ r.scores.composite | round | int }} out of 100">{{ r.scores.composite | round | int }}</p></div>
+      </div>
+      <div class="mt-2">{{ pillar_scores(r, 'Token.') }}</div>
+      <dl class="mt-3 grid grid-cols-4 gap-2 text-sm">
+        <div><dt class="text-slate-700">Entry</dt><dd class="font-semibold">{{ r.plan.entry | price }}</dd></div>
+        <div><dt class="text-slate-700">Stop</dt><dd class="font-semibold text-red-800">{{ r.plan.stop | price }}</dd></div>
+        <div><dt class="text-slate-700">Target 1</dt><dd class="font-semibold text-green-800">{{ r.plan.target1 | price }}</dd></div>
+        <div><dt class="text-slate-700">R:R</dt><dd class="font-semibold">{{ r.plan.reward_risk | num }}</dd></div>
+      </dl>
+      <ul class="mt-3 space-y-0.5 text-xs text-slate-800">{% for line in r.thesis %}<li>{{ line }}</li>{% endfor %}</ul>
+    </a>
+    {% else %}
+    <p class="rounded border border-slate-300 bg-white p-4 text-slate-800 md:col-span-2">
+      No coin passes every gate today. In crypto especially, cash (or stablecoins) is a position too.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<details class="mb-6 rounded border border-slate-300 bg-white p-4">
+  <summary class="cursor-pointer font-bold">How coins are analysed</summary>
+  <div class="mt-2 space-y-2 text-sm">
+    <p>Every coin runs through three independent analyses. Each check scores from -1 to +1, weighted, and each pillar maps to 0-100 (50 = neutral).</p>
+    <ul class="list-disc pl-5">
+      <li><strong>Tokenomics ({{ (weights.fundamental * 100) | int }}%)</strong>: a coin has no earnings, so its fundamentals are market-cap size,
+        liquidity (3-month average volume / market cap), dilution overhang (fully diluted value / market cap), supply cap, measured supply inflation,
+        track record (years since launch), distance from the all-time high, and whether it is a meme coin.</li>
+      <li><strong>Technical ({{ (weights.technical * 100) | int }}%)</strong>: 200-day trend, moving-average stack, golden/death cross, ADX, Supertrend, RSI,
+        MACD, Stochastic, Bollinger %B, on-balance volume, volume surges, relative strength vs Bitcoin. Same code as the stock pages, on a 365-day year.</li>
+      <li><strong>Chart ({{ (weights.chart * 100) | int }}%)</strong>: swing structure, 60-day regression channel, 52-week breakouts, support/resistance,
+        Bollinger squeeze, pullback setups, double tops/bottoms, candlesticks, RSI divergence.</li>
+    </ul>
+    <p>Technicals weigh more than for stocks because coins are driven by momentum and flows far more than by "value".
+      <strong>Buy</strong> needs composite &ge; {{ gates.Buy.composite }}, tokenomics &ge; {{ gates.Buy.fundamental }}, technical &ge; {{ gates.Buy.technical }},
+      chart &ge; {{ gates.Buy.chart }}, reward/risk &ge; {{ gates.Buy.reward_risk }} and no hard red flag ({{ hard_flags | join(', ') | lower }}).</p>
+    <p><strong>Not covered</strong> (no free, reliable source here): on-chain activity (active addresses, fees, exchange flows), developer activity,
+      token-unlock calendars, staking yields, exchange and regulatory news.</p>
+  </div>
+</details>
+
+<section aria-labelledby="cat-h" class="mb-6">
+  <h2 id="cat-h" class="mb-2 text-lg font-bold">Category scoreboard</h2>
+  <div class="overflow-x-auto rounded border border-slate-300 bg-white">
+    <table class="w-full text-left text-sm">
+      <caption class="sr-only">Average score and returns by coin category</caption>
+      <thead class="bg-slate-100"><tr><th scope="col" class="p-2">Category</th><th scope="col" class="p-2">Coins</th>
+        <th scope="col" class="p-2">Avg score</th><th scope="col" class="p-2">Avg 3M</th><th scope="col" class="p-2">Avg 1Y</th></tr></thead>
+      <tbody>{% for c in o.categories %}
+        <tr class="border-t border-slate-200"><th scope="row" class="p-2 font-medium">{{ c.category }}</th><td class="p-2">{{ c.coins }}</td>
+          <td class="p-2">{{ c.avg_score | num }}</td><td class="p-2">{{ delta(c.avg_ret_3m) }}</td><td class="p-2">{{ delta(c.avg_ret_12m) }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="all-h">
+  <h2 id="all-h" class="mb-2 text-lg font-bold">Full ranking</h2>
+  <form class="mb-3 flex flex-wrap gap-3" hx-get="/table" hx-target="#table" hx-trigger="change">
+    <label class="text-sm">Category
+      <select name="category" class="ml-1 rounded border border-slate-500 bg-white p-1">
+        <option value="">All</option>{% for c in categories %}<option>{{ c }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="text-sm">Verdict
+      <select name="verdict" class="ml-1 rounded border border-slate-500 bg-white p-1">
+        <option value="">All</option>{% for v in verdicts %}<option>{{ v }}</option>{% endfor %}
+      </select>
+    </label>
+  </form>
+  <div id="table" aria-live="polite">{% include "crypto/_table.html" %}</div>
+</section>
+{% endif %}
+{% endblock %}

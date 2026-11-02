@@ -10,7 +10,7 @@ import pandas as pd
 from app import analysis as swing
 from app import data
 from app.intraday.checks import DailyContext, intraday_context, intraday_technical, tradeability_issues
-from app.intraday.economics import describe as describe_math
+from app.intraday.economics import describe as describe_math, describe_evidence
 from app.intraday.economics import trade_math
 from app.intraday.indicators import LAST_ENTRY_BAR, NO_NEW_ENTRIES, OPENING_RANGE_END, bar_start
 from app.intraday.setups import COUNTER_TREND, Setup, detect_setups
@@ -148,15 +148,6 @@ def setup_evidence(evidence: dict | None, setup: Setup) -> dict:
     """The backtest record of this playbook+side. A missing record is 'not backtested', never a pass."""
     return ((evidence or {}).get("setups", {}).get(f"{setup.playbook.key}:{setup.side}")
             or {"status": "not backtested", "n": 0})
-
-
-def describe_evidence(block: dict) -> str:
-    if block["status"] == "not backtested":
-        return "not backtested yet"
-    if not block.get("n"):
-        return "never fired in the backtest"
-    return (f"backtest {block['status']} ({block['n']} trades, avg {block['avg_return']:+.2%} after costs, "
-            f"t {block['t_stat']:.1f})")
 
 
 def _too_late(report: IntradayReport, status: MarketStatus) -> bool:

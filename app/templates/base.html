@@ -23,7 +23,7 @@
       <a href="/" class="flex items-center gap-3 rounded-lg">
         <span class="brand-tile" aria-hidden="true">{{ market.key[:2] | upper }}</span>
         <span><span class="block text-base font-bold leading-tight tracking-tight text-slate-900">{{ market.app_name }}</span>
-          <span class="hidden text-xs text-slate-600 sm:block">{{ market.exchange }} &middot; Swing &middot; Intraday &middot; Order desk</span></span></a>
+          <span class="hidden text-xs text-slate-600 sm:block">{% block subtitle %}{{ market.exchange }} &middot; Swing &middot; Intraday &middot; Order desk{% endblock %}</span></span></a>
       {% if via_gateway %}
       {# one service, both markets (app/gateway.py): a full page load, so each market's page is whole and its own #}
       <nav aria-label="Market" class="order-last w-full md:order-none md:w-auto">
@@ -43,6 +43,7 @@
             {% if session.open %}<span class="live-ping absolute inline-flex h-full w-full rounded-full bg-green-700"></span>{% endif %}
             <span class="relative inline-flex h-2.5 w-2.5 rounded-full {{ 'bg-green-700' if session.open else 'bg-amber-700' }}"></span></span>
           <span class="sr-only sm:not-sr-only">{{ market.exchange }} {{ 'open' if session.open else 'closed' }}<span class="sr-only">: {{ session.label }}</span></span></span>
+        {% block header_actions %}
         {# a safety fact, so it is on every page: nothing here can reach a broker #}
         <span class="pill bg-amber-100 text-amber-950 ring-1 ring-amber-700">
           <span class="h-1.5 w-1.5 rounded-full bg-amber-700" aria-hidden="true"></span>Dry run<span class="sr-only">: orders are only written to a local journal, nothing is sent to a broker</span></span>
@@ -50,6 +51,7 @@
           <a href="/market" {% if request.url.path == '/market' %}aria-current="page"{% endif %} class="btn btn-sm btn-quiet aria-[current=page]:bg-white aria-[current=page]:shadow-sm">Markets</a>
           <a href="/" {% if nav == 'desk' %}aria-current="page"{% endif %} class="btn btn-sm btn-quiet aria-[current=page]:bg-white aria-[current=page]:shadow-sm">Order desk</a>
         </nav>
+        {% endblock %}
       </div>
     </div>
     <div class="accent-gradient h-px opacity-60" aria-hidden="true"></div>
@@ -57,10 +59,12 @@
   <main id="main" class="mx-auto max-w-7xl px-4 pb-6 pt-5">{% block content %}{% endblock %}</main>
   <footer class="mx-auto max-w-7xl px-4 {{ 'pb-28' if nav == 'desk' else 'pb-10' }} text-sm text-slate-700 lg:pb-10">
     <p class="notice border-amber-600 bg-amber-50 text-amber-950">
+      {% block disclaimer %}
       <strong>Not investment advice.</strong> Suggestions come from a mechanical, backward-looking rule set built on
       Yahoo Finance data, which can be delayed or wrong. They ignore news, management quality, taxes and your own
       goals. Intraday trading is high risk: most retail day traders lose money. Do your own research or talk to a
       {{ market.wording.adviser }} before investing.
+      {% endblock %}
     </p>
   </footer>
 </body>

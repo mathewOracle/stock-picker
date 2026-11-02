@@ -1,12 +1,12 @@
-"""One service, both markets: a small front door that sends each request to the India or the US engine.
+"""One service, every market: a small front door that sends each request to the India, US or Crypto engine.
 
 Why two worker processes behind one port, not one process: every engine module is bound to its market profile at
 import (clock, universe, data directory, costs). That binding is also what guarantees India and US evidence never mix,
 so the gateway keeps it: it starts one worker per market, picks the market per request (?market= switches it, a
 cookie remembers it), forwards the request unchanged and streams the answer back. Pages keep every URL as it is;
-the header shows India / US tabs when a page comes through here (the x-stock-picker-gateway header).
+the header shows India / US / Crypto tabs when a page comes through here (the x-stock-picker-gateway header).
 
-    ./serve.sh            both markets on :61287, tabs at the top
+    ./serve.sh            every market on :61287, tabs at the top
 """
 
 import asyncio
@@ -21,7 +21,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from starlette.background import BackgroundTask
 
-from app.market import MARKET_ENV, NAMES
+from app.market import MARKET_ENV, NAMES, load
 
 log = logging.getLogger("stock-picker.gateway")
 
@@ -56,8 +56,8 @@ def forward_headers(headers: list[tuple[bytes, bytes]], market: str) -> list[tup
 
 
 def start_workers() -> dict[str, subprocess.Popen]:
-    """One uvicorn per market on its internal port, with that market's profile selected."""
-    return {name: subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1",
+    """One uvicorn per market on its internal port, with that market's profile selected and its own app (profile.worker)."""
+    return {name: subprocess.Popen([sys.executable, "-m", "uvicorn", load(name).worker, "--host", "127.0.0.1",
                                     "--port", str(PORTS[name]), "--log-level", "warning"],
                                    env={**os.environ, MARKET_ENV: name})
             for name in NAMES}
